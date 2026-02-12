@@ -36,16 +36,16 @@ import { stateManager } from '../core/StateManager.js';
 // Constants
 // ---------------------------------------------------------------------------
 
-const FLOOR_HEIGHT    = 2.5;
+const FLOOR_HEIGHT    = 3.5;
 const MIN_FLOOR_IDX   = -2;
 const MAX_FLOOR_IDX   = 20;
 const TOTAL_FLOORS    = MAX_FLOOR_IDX - MIN_FLOOR_IDX + 1;
 const TOTAL_HEIGHT    = TOTAL_FLOORS * FLOOR_HEIGHT;
 const BASE_Y          = MIN_FLOOR_IDX * FLOOR_HEIGHT;
 
-const LEFT_X  = -8;
-const RIGHT_X =  8;
-const TOWER_HALF_W    = 4;   // half of tower width (towers are 8 wide)
+const LEFT_X  = -10;
+const RIGHT_X =  10;
+const TOWER_HALF_W    = 7;   // half of tower width (towers are 14 wide)
 
 const MAX_PARTICLES       = 30;
 const MIN_PARTICLES       = 20;

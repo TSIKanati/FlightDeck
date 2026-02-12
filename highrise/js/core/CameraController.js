@@ -31,19 +31,19 @@ import { stateManager } from './StateManager.js';
 // Constants
 // ---------------------------------------------------------------------------
 
-const FLOOR_HEIGHT   = 2.5;
+const FLOOR_HEIGHT   = 3.5;
 const MIN_FLOOR_IDX  = -2;     // Power Station (B2)
 const MAX_FLOOR_IDX  = 20;     // Observation Deck
 
-const CAM_Y_MIN = (MIN_FLOOR_IDX * FLOOR_HEIGHT) - 2;   // ~ -7
-const CAM_Y_MAX = (MAX_FLOOR_IDX * FLOOR_HEIGHT) + 8;   // ~ 58
+const CAM_Y_MIN = (MIN_FLOOR_IDX * FLOOR_HEIGHT) - 2;   // ~ -9
+const CAM_Y_MAX = (MAX_FLOOR_IDX * FLOOR_HEIGHT) + 8;   // ~ 78
 
-const DEFAULT_POS    = new THREE.Vector3(0, 15, 40);
-const DEFAULT_TARGET = new THREE.Vector3(0, 10, 0);
+const DEFAULT_POS    = new THREE.Vector3(0, 20, 55);
+const DEFAULT_TARGET = new THREE.Vector3(0, 12, 0);
 
 const ORBIT_SPEED    = 0.005;
 const PAN_SPEED      = 0.04;
-const ELEVATOR_STEP  = 2.5;    // Y units per scroll tick
+const ELEVATOR_STEP  = 3.5;    // Y units per scroll tick
 const LERP_FACTOR    = 0.08;
 
 const MIN_DISTANCE   = 8;
@@ -294,8 +294,8 @@ function zoomToFloor(floorIndex) {
     _interiorFloor = null;
 
     const floorY = floorIndex * FLOOR_HEIGHT;
-    const endPos    = new THREE.Vector3(0, floorY + 3, 28);
-    const endLookAt = new THREE.Vector3(0, floorY + 1.25, 0);
+    const endPos    = new THREE.Vector3(0, floorY + 4, 38);
+    const endLookAt = new THREE.Vector3(0, floorY + 1.75, 0);
 
     _startTransition(endPos, endLookAt, 1.8);
 
@@ -314,11 +314,11 @@ function zoomToInterior(floorIndex, tower) {
     _viewMode = 'interior';
     _interiorFloor = floorIndex;
 
-    const towerX = tower === 'left' ? -8 : 8;
-    const floorY = floorIndex * FLOOR_HEIGHT + 1.5;
+    const towerX = tower === 'left' ? -10 : 10;
+    const floorY = floorIndex * FLOOR_HEIGHT + 1.75;
 
-    const endPos    = new THREE.Vector3(towerX, floorY, 2.5);
-    const endLookAt = new THREE.Vector3(towerX, floorY - 0.2, -2);
+    const endPos    = new THREE.Vector3(towerX, floorY, 6);
+    const endLookAt = new THREE.Vector3(towerX, floorY - 0.2, -4);
 
     _startTransition(endPos, endLookAt, 1.5);
 

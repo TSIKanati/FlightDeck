@@ -3,12 +3,12 @@
  * TSI Enterprise 3D Command Center
  *
  * Creates two mirrored towers:
- *   LEFT  tower at x=-8 (Local System, warm gold accent)
- *   RIGHT tower at x=+8 (Server System, cool blue accent)
+ *   LEFT  tower at x=-10 (Local System, warm gold accent)
+ *   RIGHT tower at x=+10 (Server System, cool blue accent)
  *
  * Each tower:
- *   - 8 units wide, 3 units deep
- *   - 22 floors (index -2 through 20), each 2.5 units tall
+ *   - 14 units wide, 9 units deep
+ *   - 22 floors (index -2 through 20), each 3.5 units tall
  *   - Glass shell (MeshPhysicalMaterial with transmission)
  *   - Per-floor geometry built via Floor class
  *   - Active project floors pulse gently (emissive color animation)
@@ -36,11 +36,11 @@ import { Floor } from './Floor.js';
 // Constants
 // ---------------------------------------------------------------------------
 
-const FLOOR_HEIGHT  = 2.5;
-const TOWER_WIDTH   = 8;
-const TOWER_DEPTH   = 3;
-const LEFT_X        = -8;
-const RIGHT_X       = 8;
+const FLOOR_HEIGHT  = 3.5;
+const TOWER_WIDTH   = 14;
+const TOWER_DEPTH   = 9;
+const LEFT_X        = -10;
+const RIGHT_X       = 10;
 
 const LEFT_ACCENT  = new THREE.Color(0xd4af37);  // warm gold -- local system
 const RIGHT_ACCENT = new THREE.Color(0x4a90d9);  // cool blue -- server system

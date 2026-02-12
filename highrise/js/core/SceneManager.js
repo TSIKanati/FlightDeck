@@ -81,7 +81,7 @@ function init(container) {
     // ------------------------------------------------------------------
     // Fog -- subtle depth fade for atmosphere
     // ------------------------------------------------------------------
-    scene.fog = new THREE.FogExp2(0x040610, 0.008);
+    scene.fog = new THREE.FogExp2(0x040610, 0.005);
 
     // ------------------------------------------------------------------
     // Lighting
@@ -98,10 +98,10 @@ function init(container) {
     dirLight.shadow.mapSize.width  = 2048;
     dirLight.shadow.mapSize.height = 2048;
     dirLight.shadow.camera.near   = 1;
-    dirLight.shadow.camera.far    = 120;
-    dirLight.shadow.camera.left   = -40;
-    dirLight.shadow.camera.right  = 40;
-    dirLight.shadow.camera.top    = 70;
+    dirLight.shadow.camera.far    = 160;
+    dirLight.shadow.camera.left   = -50;
+    dirLight.shadow.camera.right  = 50;
+    dirLight.shadow.camera.top    = 100;
     dirLight.shadow.camera.bottom = -10;
     dirLight.shadow.bias = -0.0005;
     scene.add(dirLight);
@@ -119,7 +119,7 @@ function init(container) {
     // ------------------------------------------------------------------
     // Ground Plane with Grid
     // ------------------------------------------------------------------
-    const GROUND_SIZE = 200;
+    const GROUND_SIZE = 300;
 
     const groundGeo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
     const groundMat = new THREE.MeshStandardMaterial({
@@ -156,8 +156,8 @@ function init(container) {
         0.1,
         500
     );
-    camera.position.set(0, 15, 40);
-    camera.lookAt(0, 10, 0);
+    camera.position.set(0, 20, 55);
+    camera.lookAt(0, 12, 0);
 
     // ------------------------------------------------------------------
     // Renderer

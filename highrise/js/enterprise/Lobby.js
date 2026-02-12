@@ -19,8 +19,8 @@ import { eventBus } from '../core/EventBus.js';
 // Constants
 // ---------------------------------------------------------------------------
 
-const FLOOR_WIDTH = 20;
-const FLOOR_DEPTH = 14;
+const FLOOR_WIDTH = 28;
+const FLOOR_DEPTH = 18;
 const FLOOR_HEIGHT = 4;
 const PILLAR_RADIUS = 0.25;
 const PILLAR_HEIGHT = FLOOR_HEIGHT - 0.2;

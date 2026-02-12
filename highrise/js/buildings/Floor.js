@@ -24,18 +24,18 @@ import * as THREE from 'three';
 // Constants
 // ---------------------------------------------------------------------------
 
-const FLOOR_HEIGHT = 2.5;
+const FLOOR_HEIGHT = 3.5;
 const SLAB_THICKNESS = 0.12;
 const WALL_THICKNESS = 0.04;
-const TOWER_WIDTH  = 8;     // x extent
-const TOWER_DEPTH  = 3;     // z extent
+const TOWER_WIDTH  = 14;    // x extent
+const TOWER_DEPTH  = 9;     // z extent
 
 // Division layout -- 8 divisions arranged in a 4x2 grid inside each floor
-// Each division is roughly 2x1.5 units
+// Each division is roughly 3.5x4.5 units
 const DIVISION_COLS = 4;
 const DIVISION_ROWS = 2;
-const DIV_WIDTH  = TOWER_WIDTH / DIVISION_COLS;   // 2
-const DIV_DEPTH  = TOWER_DEPTH / DIVISION_ROWS;   // 1.5
+const DIV_WIDTH  = TOWER_WIDTH / DIVISION_COLS;   // 3.5
+const DIV_DEPTH  = TOWER_DEPTH / DIVISION_ROWS;   // 4.5
 
 const DIVISION_DEFS = [
     { id: 'marketing',  name: 'Marketing',    emoji: '\uD83D\uDCE2', color: '#E67E22' },

@@ -20,13 +20,13 @@ import { AccountingDivision } from './Accounting.js';
 const DIVISIONS_PER_FLOOR = 8;
 const GRID_COLS = 4;
 const GRID_ROWS = 2;
-const ZONE_WIDTH  = 2.8;
-const ZONE_DEPTH  = 3.2;
-const ZONE_GAP    = 0.3;
+const ZONE_WIDTH  = 5.5;
+const ZONE_DEPTH  = 6.5;
+const ZONE_GAP    = 0.5;
 const FLOOR_OPACITY = 0.3;
-const DESK_SIZE   = 0.25;
+const DESK_SIZE   = 0.8;
 const DESK_HEIGHT = 0.4;
-const TABLE_RADIUS = 0.8;
+const TABLE_RADIUS = 1.2;
 const TABLE_HEIGHT = 0.05;
 
 // Division definitions matching floors.json
@@ -255,13 +255,13 @@ export class DivisionManager {
         counter.sprite.position.set(ZONE_WIDTH / 2 - 0.3, 0.5, -ZONE_DEPTH / 2 + 0.3);
         zoneGroup.add(counter.sprite);
 
-        // Desks (initial count: 2)
+        // Desks (initial count: 3 -- director + 2 staff)
         const desks = [];
-        const deskCount = 2;
+        const deskCount = 3;
         for (let i = 0; i < deskCount; i++) {
             const desk = this._createDesk(color);
-            const deskX = (i - (deskCount - 1) / 2) * 0.7;
-            desk.position.set(deskX, DESK_HEIGHT / 2, 0.6);
+            const deskX = (i - (deskCount - 1) / 2) * 2.0;
+            desk.position.set(deskX, DESK_HEIGHT / 2, 1.5);
             zoneGroup.add(desk);
             desks.push(desk);
         }
@@ -387,16 +387,19 @@ export class DivisionManager {
      * Add or remove desks based on agent population
      */
     _adjustDesks(zone, agentCount) {
-        const targetDesks = Math.max(1, Math.min(6, Math.ceil(agentCount / 1.5)));
+        const targetDesks = Math.max(1, Math.min(8, Math.ceil(agentCount)));
         const currentDesks = zone.desks.length;
 
         if (targetDesks > currentDesks) {
-            // Add desks
+            // Add desks in a 2-row grid within the zone
             const color = new THREE.Color(zone.divDef.color);
             for (let i = currentDesks; i < targetDesks; i++) {
                 const desk = this._createDesk(color);
-                const deskX = (i - (targetDesks - 1) / 2) * 0.7;
-                desk.position.set(deskX, DESK_HEIGHT / 2, 0.6);
+                const col = i % 4;
+                const row = Math.floor(i / 4);
+                const deskX = (col - 1.5) * 1.2;
+                const deskZ = 0.5 + row * 2.0;
+                desk.position.set(deskX, DESK_HEIGHT / 2, deskZ);
                 zone.group.add(desk);
                 zone.desks.push(desk);
             }

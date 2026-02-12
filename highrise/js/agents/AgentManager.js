@@ -54,16 +54,16 @@ export class AgentManager {
      * @param {THREE.Scene} scene - The Highrise scene
      * @param {object} [options]
      * @param {string} [options.dataUrl] - Path to agents.json
-     * @param {number} [options.floorHeight] - Y-units per floor (default 3)
-     * @param {number} [options.floorWidth] - X-extent of a floor (default 12)
-     * @param {number} [options.floorDepth] - Z-extent of a floor (default 8)
+     * @param {number} [options.floorHeight] - Y-units per floor (default 3.5)
+     * @param {number} [options.floorWidth] - X-extent of a floor (default 28)
+     * @param {number} [options.floorDepth] - Z-extent of a floor (default 18)
      */
     constructor(scene, options = {}) {
         this.scene = scene;
         this.dataUrl = options.dataUrl || '../data/agents.json';
-        this.floorHeight = options.floorHeight || 3;
-        this.floorWidth  = options.floorWidth  || 12;
-        this.floorDepth  = options.floorDepth  || 8;
+        this.floorHeight = options.floorHeight || 3.5;
+        this.floorWidth  = options.floorWidth  || 28;
+        this.floorDepth  = options.floorDepth  || 18;
 
         /** @type {Map<string, AgentSprite>} */
         this._sprites = new Map();
@@ -156,20 +156,22 @@ export class AgentManager {
         const y = (floorIndex || 1) * this.floorHeight + 0.05;
 
         // Division determines x/z placement within the floor
+        // 4x2 grid: ZONE_WIDTH=5.5, ZONE_GAP=0.5, ZONE_DEPTH=6.5
+        // totalW=23.5, totalD=13.5  startX=-8.75, startZ=-3.25
         const divPositions = {
-            marketing:   { x: -4, z: -2 },
-            rnd:         { x: -1.5, z: -2 },
-            testing:     { x: 1.5, z: -2 },
-            production:  { x: 4, z: -2 },
-            security:    { x: -4, z: 2 },
-            legal:       { x: -1.5, z: 2 },
-            accounting:  { x: 1.5, z: 2 },
-            meeting:     { x: 4, z: 2 }
+            marketing:   { x: -8.75, z: -3.25 },
+            rnd:         { x: -2.75, z: -3.25 },
+            testing:     { x:  3.25, z: -3.25 },
+            production:  { x:  9.25, z: -3.25 },
+            security:    { x: -8.75, z:  3.75 },
+            legal:       { x: -2.75, z:  3.75 },
+            accounting:  { x:  3.25, z:  3.75 },
+            meeting:     { x:  9.25, z:  3.75 }
         };
 
         const divPos = divPositions[divisionId] || { x: 0, z: 0 };
         // Add small random offset so agents don't stack
-        const jitter = () => (Math.random() - 0.5) * 1.2;
+        const jitter = () => (Math.random() - 0.5) * 2.5;
 
         return new THREE.Vector3(
             divPos.x + jitter(),
