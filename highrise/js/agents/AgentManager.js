@@ -106,6 +106,23 @@ export class AgentManager {
                 this._createProjectSprite(agentDef);
             }
 
+            // Load server agents for RIGHT tower
+            try {
+                const serverResp = await fetch(this.dataUrl.replace('agents.json', 'server-agents.json'));
+                if (serverResp.ok) {
+                    const serverData = await serverResp.json();
+                    for (const agentDef of (serverData.serverAgents || [])) {
+                        agentDef._category = 'server';
+                        agentDef.tower = 'right';
+                        agentRegistry.register(agentDef);
+                        this._createSprite(agentDef);
+                    }
+                    console.log(`[AgentManager] Loaded ${serverData.serverAgents?.length || 0} RIGHT tower server agents`);
+                }
+            } catch (e) {
+                console.warn('[AgentManager] No server-agents.json found, RIGHT tower agents skipped');
+            }
+
             this._ready = true;
             eventBus.emit('agentManager:ready', { count: this._sprites.size });
             console.log(`[AgentManager] Initialized ${this._sprites.size} agent sprites`);
@@ -119,6 +136,10 @@ export class AgentManager {
      */
     _createSprite(agentDef) {
         const pos = this._floorPosition(agentDef.floor, agentDef.division);
+        // RIGHT tower agents offset to the right tower (x+20)
+        if (agentDef.tower === 'right') {
+            pos.x += 20;
+        }
         const sprite = new AgentSprite(agentDef, { position: pos });
 
         // Random initial state
@@ -255,6 +276,17 @@ export class AgentManager {
     getAgentsByFloor(floorIndex) {
         return Array.from(this._sprites.values()).filter(
             s => s.def.floor === floorIndex
+        );
+    }
+
+    /**
+     * @param {number} floorIndex
+     * @param {string} tower - 'left' or 'right'
+     * @returns {AgentSprite[]}
+     */
+    getAgentsByFloorAndTower(floorIndex, tower) {
+        return Array.from(this._sprites.values()).filter(
+            s => s.def.floor === floorIndex && (s.def.tower || 'left') === tower
         );
     }
 

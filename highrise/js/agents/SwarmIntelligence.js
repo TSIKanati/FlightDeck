@@ -70,11 +70,16 @@ export class SwarmIntelligence {
         const allAgents = this.agentManager.getAllAgents();
         const candidates = [];
 
+        // Determine tower scope - swarms stay within their tower unless cross-tower
+        const tower = data.tower || 'left';
+
         for (const agent of allAgents) {
             // Skip agents already on the target floor
             if (agent.def.floor === targetFloor) continue;
             // Skip agents that are in a meeting or already swarming
             if (agent.state === 'meeting') continue;
+            // Tower-aware: only recruit from the same tower unless explicitly cross-tower
+            if (tower !== 'both' && (agent.def.tower || 'left') !== tower) continue;
             // Prefer idle agents
             const idleBonus = agent.state === 'idle' ? 2 : 0;
 

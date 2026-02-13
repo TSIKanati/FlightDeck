@@ -16,13 +16,20 @@ export class FloorManager {
      * @param {number} floor - Floor number this manager controls
      * @param {object} projectDef - Project definition from projects.json
      * @param {import('./AgentManager.js').AgentManager} agentManager
+     * @param {object} [options]
+     * @param {string} [options.tower] - 'left' or 'right' (default: 'left')
      */
-    constructor(floor, projectDef, agentManager) {
+    constructor(floor, projectDef, agentManager, options = {}) {
         this.floor = floor;
         this.project = projectDef;
         this.agentManager = agentManager;
-        this.id = `fm-${projectDef?.id || floor}`;
-        this.name = `${projectDef?.name || 'Floor ' + floor} Manager`;
+        this.tower = options.tower || 'left';
+        this.id = this.tower === 'right'
+            ? `fm-right-${projectDef?.id || floor}`
+            : `fm-${projectDef?.id || floor}`;
+        this.name = this.tower === 'right'
+            ? `RIGHT ${projectDef?.name || 'Floor ' + floor} Manager`
+            : `${projectDef?.name || 'Floor ' + floor} Manager`;
         this.taskQueue = [];
         this.activeTasks = new Map();
         this.swarmRequests = [];
@@ -42,9 +49,10 @@ export class FloorManager {
     }
 
     _listen() {
-        // Listen for tasks delegated to this floor
-        eventBus.on(`floor:${this.floor}:task`, (data) => this.receiveTask(data));
-        eventBus.on(`floor:${this.floor}:swarm-response`, (data) => this._handleSwarmResponse(data));
+        // Tower-scoped event channels
+        const prefix = this.tower === 'right' ? `floor:right:${this.floor}` : `floor:${this.floor}`;
+        eventBus.on(`${prefix}:task`, (data) => this.receiveTask(data));
+        eventBus.on(`${prefix}:swarm-response`, (data) => this._handleSwarmResponse(data));
     }
 
     // ─── Receive Task ───────────────────────────────────
@@ -113,12 +121,14 @@ export class FloorManager {
 
     // ─── Single Delegation ──────────────────────────────
     _delegateSingle(taskId, title, description, division, priority) {
-        const agents = this.agentManager.getAgentsByFloor(this.floor)
-            .filter(a => a.def.division === division);
+        const floorAgents = this.tower === 'right'
+            ? this.agentManager.getAgentsByFloorAndTower(this.floor, 'right')
+            : this.agentManager.getAgentsByFloor(this.floor);
+        const agents = floorAgents.filter(a => a.def.division === division);
 
         if (agents.length === 0) {
             // No agents in this division, use any available on the floor
-            const available = this.agentManager.getAgentsByFloor(this.floor);
+            const available = floorAgents;
             if (available.length > 0) {
                 const agent = available[Math.floor(Math.random() * available.length)];
                 this._assignToAgent(taskId, agent, division);
@@ -144,8 +154,10 @@ export class FloorManager {
         }));
 
         for (const sub of subtasks) {
-            const agents = this.agentManager.getAgentsByFloor(this.floor)
-                .filter(a => a.def.division === sub.division);
+            const floorAgents = this.tower === 'right'
+                ? this.agentManager.getAgentsByFloorAndTower(this.floor, 'right')
+                : this.agentManager.getAgentsByFloor(this.floor);
+            const agents = floorAgents.filter(a => a.def.division === sub.division);
 
             if (agents.length > 0) {
                 const agent = agents[0];
@@ -161,8 +173,10 @@ export class FloorManager {
     _initiateSwarm(taskId, title, description, divisions, priority) {
         console.log(`[${this.name}] SWARM ACTIVATED for task ${taskId}`);
 
-        // Get all agents on this floor
-        const localAgents = this.agentManager.getAgentsByFloor(this.floor);
+        // Get all agents on this floor (tower-aware)
+        const localAgents = this.tower === 'right'
+            ? this.agentManager.getAgentsByFloorAndTower(this.floor, 'right')
+            : this.agentManager.getAgentsByFloor(this.floor);
 
         // Assign all local agents
         const localIds = [];
@@ -305,6 +319,7 @@ export class FloorManager {
             id: this.id,
             name: this.name,
             floor: this.floor,
+            tower: this.tower,
             project: this.project?.id,
             activeTasks: this.activeTasks.size,
             queueLength: this.taskQueue.length

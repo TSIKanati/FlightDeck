@@ -273,6 +273,40 @@ function _spawnRandom() {
 }
 
 // ---------------------------------------------------------------------------
+// Directed particles (cross-tower task visualization)
+// ---------------------------------------------------------------------------
+
+/**
+ * Spawn a directed particle traveling from a specific LEFT floor to a specific RIGHT floor
+ * @param {number} fromFloor - LEFT tower floor index
+ * @param {number} toFloor - RIGHT tower floor index
+ * @param {string} type - particle type (deployment, sync, command, data, alert)
+ */
+function _spawnDirected(fromFloor, toFloor, type) {
+    const p = _getInactive();
+    if (!p) return;
+
+    const fromY = fromFloor * FLOOR_HEIGHT + FLOOR_HEIGHT * 0.5;
+    const toY = toFloor * FLOOR_HEIGHT + FLOOR_HEIGHT * 0.5;
+
+    p.spawn(
+        new THREE.Vector3(LEFT_X + TOWER_HALF_W, fromY, (Math.random() - 0.5) * 0.3),
+        new THREE.Vector3(RIGHT_X - TOWER_HALF_W, toY, (Math.random() - 0.5) * 0.3),
+        type || 'command'
+    );
+    p.speed = PARTICLE_SPEED_MAX * 1.2;
+
+    // Pulse the connection line at destination
+    _pulseIntensity = Math.max(_pulseIntensity, 0.6);
+    _connectionLines.forEach(line => {
+        if (line.userData.floorIndex === fromFloor || line.userData.floorIndex === toFloor) {
+            line.material.opacity = 0.6;
+            line.material.color.copy(TYPE_COLORS[type] || TYPE_COLORS.command);
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Per-frame update
 // ---------------------------------------------------------------------------
 
@@ -434,6 +468,28 @@ class TranslucentWallClass {
         eventBus.on('sync:trigger', (data) => {
             if (data && data.from !== undefined && data.to !== undefined) {
                 triggerSync(data.from, data.to);
+            }
+        });
+
+        // Cross-tower task delegation → directed particle burst
+        eventBus.on('wall:crossTowerTask', (data) => {
+            const fromFloor = data.fromFloor || 20;
+            const toFloor = data.toFloor || 15;
+            const type = data.type || 'command';
+            _spawnDirected(fromFloor, toFloor, type);
+        });
+
+        // Sally health events → subtle connection pulse
+        eventBus.on('sally:health', () => {
+            _pulseIntensity = Math.max(_pulseIntensity, 0.15);
+        });
+
+        // Cross-tower task delegated → burst particles
+        eventBus.on('task:delegated', (data) => {
+            if (data.crossTower) {
+                _spawnDirected(data.floor || 20, data.targetFloor || 15, 'deployment');
+                _spawnDirected(data.floor || 20, data.targetFloor || 15, 'deployment');
+                _spawnDirected(data.floor || 20, data.targetFloor || 15, 'deployment');
             }
         });
 

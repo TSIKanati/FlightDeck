@@ -168,6 +168,15 @@ function handleSallyMessage(msg) {
         case 'AGENT_STATUS':
             updateAgent(msg.data);
             break;
+        case 'C2_TASK_COMPLETE':
+            broadcast('C2_TASK_COMPLETE', msg.data);
+            break;
+        case 'C2_TASK_PROGRESS':
+            broadcast('C2_TASK_PROGRESS', msg.data);
+            break;
+        case 'CROSS_TOWER_TASK':
+            broadcast('CROSS_TOWER_TASK', msg.data);
+            break;
         default:
             // Forward unknown messages as generic events
             broadcast('SALLY_EVENT', msg);
@@ -315,6 +324,42 @@ app.post('/api/metrics/server', (req, res) => {
     state.systemMetrics.server = { ...state.systemMetrics.server, ...req.body, ts: Date.now() };
     broadcast('SERVER_METRICS', state.systemMetrics.server);
     res.json({ received: true });
+});
+
+// ─── C2 Endpoints ──────────────────────────────────────
+app.post('/api/c2/task', (req, res) => {
+    const cmd = req.body;
+    console.log(`[C2-API] Task command received:`, cmd);
+
+    // Forward to Sally VPS if connected
+    if (sallyWs?.readyState === WebSocket.OPEN) {
+        sallyWs.send(JSON.stringify({ type: 'C2_TASK', data: cmd }));
+    }
+
+    // Broadcast to UI clients
+    broadcast('CROSS_TOWER_TASK', cmd);
+
+    res.json({ success: true, routed: state.sallyConnected, cmd });
+});
+
+app.get('/api/c2/status', (req, res) => {
+    res.json({
+        leftTower: {
+            name: 'BeeFrank C2',
+            status: 'online',
+            metrics: state.systemMetrics.local
+        },
+        rightTower: {
+            name: 'Sally C2',
+            status: state.sallyConnected ? 'online' : 'offline',
+            metrics: state.systemMetrics.server
+        },
+        sallyConnected: state.sallyConnected,
+        beeFrankConnected: state.beeFrankConnected,
+        uptime: Date.now() - state.bootTime,
+        agents: Array.from(state.agents.values()),
+        uiClients: state.uiClients.size
+    });
 });
 
 app.get('/api/status', (req, res) => {

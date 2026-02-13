@@ -9,7 +9,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: tsi-highrise
+    container_name: urbot-highrise
     ports:
       - "9080:8080"
     volumes:
@@ -27,17 +27,17 @@ services:
       timeout: 3s
       retries: 3
     labels:
-      - "com.tsi.project=FlightDeck"
-      - "com.tsi.component=highrise-ui"
-      - "com.tsi.floor=all"
-      - "com.tsi.description=3D Enterprise Command Center"
+      - "com.urbot.project=highrise"
+      - "com.urbot.component=highrise-ui"
+      - "com.urbot.floor=all"
+      - "com.urbot.description=3D Enterprise Command Center"
 
   # 🔌 WebSocket relay + REST API for live agent/system data
   highrise-api:
     build:
       context: ./api
       dockerfile: Dockerfile
-    container_name: tsi-highrise-api
+    container_name: urbot-highrise-api
     ports:
       - "8081:8081"
     environment:
@@ -46,6 +46,7 @@ services:
       - BEEFRANK_BOT_TOKEN=${BEEFRANK_BOT_TOKEN:-}
       - SALLY_WS_URL=${SALLY_WS_URL:-ws://host.docker.internal:3001}
       - CORS_ORIGIN=http://localhost:9080
+      - SALLY_C2_ENABLED=true
     volumes:
       - ./api:/app
       - /app/node_modules
@@ -56,17 +57,18 @@ services:
       highrise-ui:
         condition: service_healthy
     labels:
-      - "com.tsi.project=FlightDeck"
-      - "com.tsi.component=highrise-api"
-      - "com.tsi.floor=lobby"
-      - "com.tsi.bots=beefrank,sally"
+      - "com.urbot.project=highrise"
+      - "com.urbot.component=highrise-api"
+      - "com.urbot.floor=lobby"
+      - "com.urbot.bots=beefrank,sally"
+      - "com.urbot.c2=dual-tower"
 
   # ⚡ Power Station - System resource monitor
   highrise-monitor:
     build:
       context: ./monitor
       dockerfile: Dockerfile
-    container_name: tsi-highrise-monitor
+    container_name: urbot-highrise-monitor
     ports:
       - "9082:8082"
     environment:
@@ -80,9 +82,9 @@ services:
     depends_on:
       - highrise-api
     labels:
-      - "com.tsi.project=FlightDeck"
-      - "com.tsi.component=resource-monitor"
-      - "com.tsi.floor=power-station"
+      - "com.urbot.project=highrise"
+      - "com.urbot.component=resource-monitor"
+      - "com.urbot.floor=power-station"
 
 networks:
   tsi-network:

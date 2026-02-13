@@ -14,14 +14,15 @@
     {
       "id": "sally",
       "name": "Sally",
-      "role": "Remote Deployment & Sync",
+      "role": "RIGHT Tower C2 Commander",
       "model": "VPS Node.js",
       "status": "active",
       "avatar": "#E74C3C",
       "tower": "right",
       "floor": 20,
       "division": "production",
-      "description": "Server-side deployment agent managing VPS operations"
+      "description": "RIGHT Tower C2 Commander - manages server deployment, sync, monitoring, SSL, DNS, and backup operations",
+      "capabilities": ["deploy", "sync", "monitor", "ssl", "subdomain", "backup", "rollback", "health-check"]
     },
     {
       "id": "beefrank",

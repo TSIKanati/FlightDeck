@@ -41,7 +41,54 @@ export class C2CommandChain {
         /** @type {SwarmIntelligence} */
         this.swarm = new SwarmIntelligence(scene, agentManager);
 
+        /** @type {import('./SallyC2.js').SallyC2|null} Linked RIGHT tower C2 */
+        this.sallyC2 = null;
+
         this._initialized = false;
+    }
+
+    /**
+     * Link the RIGHT tower C2 chain (Sally) for cross-tower delegation
+     * @param {import('./SallyC2.js').SallyC2} sallyC2
+     */
+    setSallyC2(sallyC2) {
+        this.sallyC2 = sallyC2;
+        console.log('[C2] Sally C2 linked - dual tower routing enabled');
+    }
+
+    /**
+     * Determine which tower(s) should handle a task based on keywords
+     * @param {string} title
+     * @param {string} description
+     * @returns {'left'|'right'|'both'}
+     */
+    _determineTower(title, description) {
+        const text = `${title} ${description}`.toLowerCase();
+
+        const rightKeywords = ['deploy', 'server', 'vps', 'ssl', 'dns', 'subdomain', 'uptime',
+            'bandwidth', 'database', 'backup', 'rsync', 'ftp', 'monitor', 'alerting',
+            'rate-limit', 'endpoint', 'rollback', 'health-check'];
+        const leftKeywords = ['build', 'design', 'prototype', 'test', 'code', 'develop',
+            'ui', 'frontend', 'component', 'style', 'feature', 'bug', 'fix'];
+        const bothKeywords = ['full-stack', 'release', 'migrate', 'sync', 'full cycle'];
+
+        // Check 'both' first (highest priority)
+        if (bothKeywords.some(kw => text.includes(kw))) return 'both';
+
+        // Score each tower
+        let rightScore = 0, leftScore = 0;
+        for (const kw of rightKeywords) { if (text.includes(kw)) rightScore++; }
+        for (const kw of leftKeywords) { if (text.includes(kw)) leftScore++; }
+
+        // Deploy tasks that also mention build are cross-tower
+        if (text.includes('deploy') && (text.includes('build') || text.includes('test'))) {
+            return 'both';
+        }
+
+        if (rightScore > 0 && leftScore === 0) return 'right';
+        if (rightScore > leftScore) return 'right';
+
+        return 'left';
     }
 
     // ─── Initialize ─────────────────────────────────────
@@ -173,6 +220,9 @@ export class C2CommandChain {
     _createAndDelegate(args, source, chatId) {
         const { title, description = '', project, floor, priority = 'normal', division } = args;
 
+        // Determine which tower handles this task
+        const tower = this._determineTower(title || '', description);
+
         // Create task in logger
         const task = taskLogger.createTask({
             title: title || 'Untitled Task',
@@ -182,10 +232,42 @@ export class C2CommandChain {
             priority,
             targetProject: project,
             targetFloor: floor,
-            targetDivision: division
+            targetDivision: division,
+            tower
         });
 
-        // Determine target floor
+        // Route to RIGHT tower via Sally C2
+        if ((tower === 'right' || tower === 'both') && this.sallyC2) {
+            eventBus.emit('c2:cross:right', {
+                command: 'task',
+                args: { title: task.title, description: task.description, priority, division },
+                source: 'c2-cross',
+                chatId,
+                taskId: task.id
+            });
+
+            // Emit cross-tower visualization event
+            eventBus.emit('wall:crossTowerTask', {
+                taskId: task.id,
+                title: task.title,
+                type: tower === 'both' ? 'sync' : 'command',
+                fromFloor: 20,
+                toFloor: floor || 15
+            });
+
+            if (tower === 'right') {
+                // Pure right-tower task, done here
+                if (chatId) {
+                    eventBus.emit('beefrank:reply', {
+                        chatId,
+                        text: `Task ${task.id} routed to RIGHT TOWER (Sally C2)`
+                    });
+                }
+                return task;
+            }
+        }
+
+        // LEFT tower delegation (or 'both' tower - LEFT portion)
         let targetFloor = floor;
         if (!targetFloor && project) {
             const proj = this.projects.find(p => p.id === project || p.name === project);
@@ -195,7 +277,7 @@ export class C2CommandChain {
             targetFloor = this._inferFloor(title, description);
         }
 
-        // Delegate to floor manager
+        // Delegate to LEFT floor manager
         const fm = this.floorManagers.get(targetFloor);
         if (fm) {
             eventBus.emit(`floor:${targetFloor}:task`, {
@@ -207,7 +289,6 @@ export class C2CommandChain {
             });
         } else {
             console.warn(`[C2] No floor manager for floor ${targetFloor}, assigning to production floor`);
-            // Default to TSIAPP floor
             eventBus.emit('floor:15:task', {
                 taskId: task.id,
                 title: task.title,
@@ -218,10 +299,11 @@ export class C2CommandChain {
         }
 
         // Notify telegram if applicable
+        const towerLabel = tower === 'both' ? 'BOTH TOWERS' : `Floor ${targetFloor}`;
         if (chatId) {
             eventBus.emit('beefrank:reply', {
                 chatId,
-                text: `Task ${task.id} created and delegated to Floor ${targetFloor}`
+                text: `Task ${task.id} created and delegated to ${towerLabel}`
             });
         }
 
@@ -230,13 +312,36 @@ export class C2CommandChain {
 
     _createDeployTask(args, source, chatId) {
         const project = args.project || 'tsiapp';
-        return this._createAndDelegate({
+
+        // Deploy is always cross-tower: LEFT builds, RIGHT deploys
+        const task = this._createAndDelegate({
             title: `Deploy ${project}`,
-            description: `Deploy latest build of ${project} to production`,
+            description: `Build and deploy ${project} to production (cross-tower)`,
             project,
             priority: 'high',
             division: 'production'
         }, source, chatId);
+
+        // Explicitly route the deploy portion to Sally C2
+        if (this.sallyC2) {
+            eventBus.emit('c2:cross:right', {
+                command: 'deploy',
+                args: { project },
+                source: 'c2-cross',
+                chatId,
+                taskId: task?.id
+            });
+
+            eventBus.emit('wall:crossTowerTask', {
+                taskId: task?.id,
+                title: `Deploy ${project}`,
+                type: 'deployment',
+                fromFloor: 15,
+                toFloor: 15
+            });
+        }
+
+        return task;
     }
 
     _createSwarmTask(args, source, chatId) {
@@ -325,10 +430,21 @@ export class C2CommandChain {
 
     _sendStatusReport(chatId) {
         const stats = taskLogger.getStats();
-        const fmStatus = Array.from(this.floorManagers.values())
+
+        // LEFT tower floors
+        const leftFmStatus = Array.from(this.floorManagers.values())
             .filter(fm => fm.getActiveTaskCount() > 0)
-            .map(fm => `  F${fm.floor}: ${fm.getActiveTaskCount()} active`)
+            .map(fm => `  F${fm.floor}L: ${fm.getActiveTaskCount()} active`)
             .join('\n');
+
+        // RIGHT tower floors (via Sally C2)
+        let rightFmStatus = '  No Sally C2';
+        let rightTasks = 0;
+        if (this.sallyC2) {
+            const sallyStatus = this.sallyC2.getStatus();
+            rightTasks = sallyStatus.activeTasks;
+            rightFmStatus = sallyStatus.busyFloors || '  All clear';
+        }
 
         const swarms = this.swarm.getActiveSessions();
         const swarmStatus = swarms.length > 0
@@ -337,7 +453,7 @@ export class C2CommandChain {
 
         eventBus.emit('beefrank:reply', {
             chatId,
-            text: `*HIGHRISE C2 STATUS*\n━━━━━━━━━━━━━━━\n*Tasks:*\n  Active: ${stats.active}\n  Completed: ${stats.completedTotal}\n  Failed: ${stats.failedTotal}\n\n*Busy Floors:*\n${fmStatus || '  All clear'}\n\n*Swarms:*\n${swarmStatus}\n\n*Floor Managers:* ${this.floorManagers.size}\n*Avg Task Time:* ${Math.round(stats.avgDuration / 1000)}s`
+            text: `*HIGHRISE C2 STATUS*\n━━━━━━━━━━━━━━━\n*Tasks:*\n  Active: ${stats.active}\n  Completed: ${stats.completedTotal}\n  Failed: ${stats.failedTotal}\n\n*LEFT TOWER (BeeFrank):*\n${leftFmStatus || '  All clear'}\n\n*RIGHT TOWER (Sally):*\n${rightFmStatus}\n  Active: ${rightTasks}\n\n*Swarms:*\n${swarmStatus}\n\n*Floor Managers:* ${this.floorManagers.size} LEFT + ${this.sallyC2?.floorManagers?.size || 0} RIGHT\n*Avg Task Time:* ${Math.round(stats.avgDuration / 1000)}s`
         });
     }
 

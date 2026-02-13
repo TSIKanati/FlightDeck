@@ -44,6 +44,24 @@
       "protocol": "FTP/WebSocket",
       "description": "File sync between local and server",
       "color": "#3498DB"
+    },
+    {
+      "id": "beefrank-sally-c2",
+      "from": "beefrank",
+      "to": "sally",
+      "type": "c2-delegation",
+      "protocol": "EventBus (c2:cross:right)",
+      "description": "C2 command delegation from BeeFrank to Sally for RIGHT tower tasks",
+      "color": "#FFD700"
+    },
+    {
+      "id": "sally-right-tower",
+      "from": "sally",
+      "to": "tower-right",
+      "type": "c2-command",
+      "protocol": "EventBus (sally:command)",
+      "description": "Sally C2 commands to RIGHT tower FloorManagers and server agents",
+      "color": "#E74C3C"
     }
   ],
   "botEndpoints": {

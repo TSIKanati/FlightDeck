@@ -23,16 +23,68 @@ export class FullySailSally {
             storage: 34,
             uptime: 99.94
         };
+        this.role = 'RIGHT Tower C2 Commander';
         this.syncStatus = 'idle'; // 'idle' | 'syncing' | 'error'
         this.lastSync = Date.now();
         this.wsConnected = false;
         this._ws = null;
         this._reconnectTimer = null;
 
+        /** @type {Map<string, object>} Active C2 tasks tracked by Sally */
+        this.c2Tasks = new Map();
+
         botBridge.registerBot(this.id, this);
+
+        // Wire into C2 event chain
+        this._listenC2();
 
         // Try live API connection first, fall back to simulation
         this._connectToAPI();
+    }
+
+    // ─── C2 Chain Participation ─────────────────────────
+    _listenC2() {
+        // Route incoming VPS WebSocket commands as sally:command events
+        eventBus.on('sally:deploy:start', (data) => {
+            const taskId = `sally-${Date.now()}`;
+            this.c2Tasks.set(taskId, { type: 'deploy', ...data, startTime: Date.now() });
+            eventBus.emit('sally:command', {
+                command: 'deploy',
+                args: { project: data.project },
+                source: 'vps-ws',
+                taskId
+            });
+        });
+
+        eventBus.on('sally:sync:start', (data) => {
+            const taskId = `sally-sync-${Date.now()}`;
+            this.c2Tasks.set(taskId, { type: 'sync', ...data, startTime: Date.now() });
+            eventBus.emit('sally:command', {
+                command: 'sync',
+                args: { target: data.target },
+                source: 'vps-ws',
+                taskId
+            });
+        });
+
+        // Track completions
+        eventBus.on('sally:deploy:complete', (data) => {
+            for (const [id, task] of this.c2Tasks) {
+                if (task.type === 'deploy') {
+                    this.c2Tasks.delete(id);
+                    break;
+                }
+            }
+        });
+
+        eventBus.on('sally:sync:complete', () => {
+            for (const [id, task] of this.c2Tasks) {
+                if (task.type === 'sync') {
+                    this.c2Tasks.delete(id);
+                    break;
+                }
+            }
+        });
     }
 
     // ─── Live API Connection ────────────────────────────
@@ -112,6 +164,27 @@ export class FullySailSally {
             case 'LOCAL_METRICS':
                 // Forward local metrics to power station
                 eventBus.emit('powerstation:local', msg.data);
+                break;
+            case 'C2_TASK':
+                // Route C2 commands from the VPS into Sally's command chain
+                eventBus.emit('sally:command', {
+                    command: msg.data.command || 'task',
+                    args: msg.data.args || msg.data,
+                    source: 'vps-api'
+                });
+                break;
+            case 'C2_TASK_COMPLETE':
+                eventBus.emit('task:completed', {
+                    taskId: msg.data.taskId,
+                    result: msg.data.result || 'VPS confirmed'
+                });
+                break;
+            case 'C2_TASK_PROGRESS':
+                eventBus.emit('task:progress', {
+                    taskId: msg.data.taskId,
+                    progress: msg.data.progress,
+                    message: msg.data.message
+                });
                 break;
         }
     }
@@ -208,13 +281,15 @@ export class FullySailSally {
             id: this.id,
             name: this.name,
             username: this.username,
+            role: this.role,
             status: this.status,
             tower: this.tower,
             wsConnected: this.wsConnected,
             serverHealth: { ...this.serverHealth },
             syncStatus: this.syncStatus,
             lastSync: this.lastSync,
-            recentDeployments: this.deployments.slice(-5)
+            recentDeployments: this.deployments.slice(-5),
+            activeC2Tasks: this.c2Tasks.size
         };
     }
 

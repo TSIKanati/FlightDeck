@@ -37,6 +37,8 @@ export class TaskLogger {
             targetFloor: params.targetFloor || null,
             targetProject: params.targetProject || null,
             targetDivision: params.targetDivision || null,
+            tower: params.tower || 'left',  // 'left' | 'right' | 'both'
+            crossTowerLink: params.crossTowerLink || null,  // linked task ID for cross-tower pairs
             status: 'pending',    // pending → delegated → in-progress → swarming → completed | failed
             delegationChain: [],  // { agent, floor, division, timestamp, action }
             assignedAgents: [],   // current assigned agent IDs
@@ -195,6 +197,26 @@ export class TaskLogger {
     getTasksByAgent(agentId) {
         return Array.from(this.tasks.values()).filter(t =>
             t.assignedAgents.includes(agentId) || t.swarmAgents.includes(agentId)
+        );
+    }
+
+    /**
+     * @param {string} tower - 'left', 'right', or 'both'
+     * @returns {object[]}
+     */
+    getTasksByTower(tower) {
+        return Array.from(this.tasks.values()).filter(t =>
+            t.tower === tower || t.tower === 'both'
+        );
+    }
+
+    /**
+     * Get all cross-tower tasks (tasks that span both towers)
+     * @returns {object[]}
+     */
+    getCrossTowerTasks() {
+        return Array.from(this.tasks.values()).filter(t =>
+            t.tower === 'both' || t.crossTowerLink
         );
     }
 

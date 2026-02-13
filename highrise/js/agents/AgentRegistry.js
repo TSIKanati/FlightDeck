@@ -115,6 +115,14 @@ export class AgentRegistry {
         return this.getAll().filter(a => a._category === category);
     }
 
+    /**
+     * @param {string} tower - 'left' or 'right'
+     * @returns {object[]}
+     */
+    getByTower(tower) {
+        return this.getAll().filter(a => (a.tower || 'left') === tower);
+    }
+
     // ---- Statistics ----
 
     /**

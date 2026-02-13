@@ -31,6 +31,7 @@ import { BeeFranknBot } from '../bots/BeeFranknBot.js';
 import { FullySailSally } from '../bots/FullySailSally.js';
 import { botBridge } from '../bots/BotBridge.js';
 import { C2CommandChain } from '../agents/C2CommandChain.js';
+import { SallyC2 } from '../agents/SallyC2.js';
 import { taskLogger } from './TaskLogger.js';
 
 export class HighriseApp {
@@ -120,7 +121,23 @@ export class HighriseApp {
                 enterpriseFloors
             });
             await this.c2.init();
-            this._updateLoading(85, 'C2 command chain online...');
+            this._updateLoading(82, 'C2 command chain online...');
+
+            // Sally C2 - RIGHT Tower Command Chain
+            let serverAgents = [];
+            try {
+                const serverResp = await fetch('./js/data/server-agents.json');
+                if (serverResp.ok) {
+                    const serverData = await serverResp.json();
+                    serverAgents = serverData.serverAgents || [];
+                }
+            } catch (e) {
+                console.warn('[Highrise] No server-agents.json, SallyC2 will init with no agents');
+            }
+            this.sallyC2 = new SallyC2(this.sceneManager.scene, this.agentManager, { serverAgents });
+            await this.sallyC2.init();
+            this.c2.setSallyC2(this.sallyC2);
+            this._updateLoading(85, 'Sally C2 RIGHT tower online...');
 
             // UI
             this.hud = new HUD();
@@ -353,8 +370,9 @@ export class HighriseApp {
         if (this.waterCooler?.update) this.waterCooler.update(this.clock.delta);
         if (this.networking?.update) this.networking.update(this.clock.delta);
 
-        // C2 Command Chain (swarm effects, task tracking)
+        // C2 Command Chains (swarm effects, task tracking)
         if (this.c2?.update) this.c2.update(this.clock.delta);
+        if (this.sallyC2?.update) this.sallyC2.update(this.clock.delta);
 
         // Enterprise floors
         if (this.lobby?.update) this.lobby.update(this.clock.delta);
