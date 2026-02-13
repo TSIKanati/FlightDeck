@@ -141,7 +141,7 @@ export class HighriseApp {
 
             // UI
             this.hud = new HUD();
-            this.floorPanel = new FloorPanel();
+            this.floorPanel = new FloorPanel({ agentManager: this.agentManager, taskLogger });
             this.agentPanel = new AgentPanel();
             this.elevator = new ElevatorUI();
             this.minimap = new MiniMap();

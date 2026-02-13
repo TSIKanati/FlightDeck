@@ -11,6 +11,7 @@
 
 import { eventBus } from '../core/EventBus.js';
 import { stateManager } from '../core/StateManager.js';
+import { taskLogger as defaultTaskLogger } from '../core/TaskLogger.js';
 
 // ---------------------------------------------------------------------------
 // Division reference data
@@ -36,6 +37,14 @@ const STATUS_COLORS = {
     development: { bg: 'rgba(52,152,219,0.15)',  text: '#3498DB', border: 'rgba(52,152,219,0.4)' },
     concept:     { bg: 'rgba(155,89,182,0.15)',  text: '#9B59B6', border: 'rgba(155,89,182,0.4)' },
     reserved:    { bg: 'rgba(127,140,141,0.15)', text: '#95A5A6', border: 'rgba(127,140,141,0.4)' },
+};
+
+const AGENT_STATE_COLORS = {
+    working:    '#2ECC71',
+    idle:       '#5DADE2',
+    moving:     '#E67E22',
+    meeting:    '#F1C40F',
+    networking: '#8E44AD',
 };
 
 // ---------------------------------------------------------------------------
@@ -298,11 +307,14 @@ function _injectStyles() {
 // ---------------------------------------------------------------------------
 
 export class FloorPanel {
-    constructor() {
+    constructor({ agentManager, taskLogger } = {}) {
         this._panel = null;
         this._isOpen = false;
         this._currentFloor = null;
         this._currentProject = null;
+        this._activeTab = 'roster';
+        this._agentManager = agentManager || null;
+        this._taskLogger = taskLogger || defaultTaskLogger;
         this._unsubscribers = [];
 
         _injectStyles();
@@ -556,6 +568,9 @@ export class FloorPanel {
         actions.appendChild(btnAssign);
         actions.appendChild(btnLink);
         panel.appendChild(actions);
+
+        // ---- Tab Bar (Roster / Tasks / History) ----
+        this._renderTabBar(panel, floorData);
     }
 
     _addProjectRow(container, label, value) {
@@ -580,6 +595,236 @@ export class FloorPanel {
         btn.className = 'hr-fp-btn' + (variant ? ` ${variant}` : '');
         btn.textContent = text;
         return btn;
+    }
+
+    // -----------------------------------------------------------------------
+    // Tab Bar + Tab Content
+    // -----------------------------------------------------------------------
+
+    _renderTabBar(panel, floorData) {
+        const tabBar = document.createElement('div');
+        tabBar.className = 'hr-fp-tab-bar';
+
+        const tabs = [
+            { id: 'roster', label: 'Roster' },
+            { id: 'tasks', label: 'Tasks' },
+            { id: 'history', label: 'History' },
+        ];
+
+        tabs.forEach(t => {
+            const tab = document.createElement('div');
+            tab.className = 'hr-fp-tab' + (this._activeTab === t.id ? ' active' : '');
+            tab.textContent = t.label;
+            tab.addEventListener('click', () => this._switchTab(t.id));
+            tabBar.appendChild(tab);
+        });
+
+        panel.appendChild(tabBar);
+
+        // Tab content container
+        const content = document.createElement('div');
+        content.className = 'hr-fp-tab-content';
+        content.id = 'hr-fp-tab-content';
+
+        const floorIndex = floorData.index;
+        if (this._activeTab === 'roster') {
+            this._renderAgentRoster(content, floorIndex);
+        } else if (this._activeTab === 'tasks') {
+            this._renderActiveTasks(content, floorIndex);
+        } else if (this._activeTab === 'history') {
+            this._renderCompletedTasks(content, floorIndex);
+        }
+
+        panel.appendChild(content);
+    }
+
+    _switchTab(tabName) {
+        this._activeTab = tabName;
+        if (this._isOpen && this._currentFloor) {
+            this._render(this._currentFloor, this._currentProject);
+        }
+    }
+
+    _renderAgentRoster(container, floorIndex) {
+        const roster = document.createElement('div');
+        roster.className = 'hr-fp-roster';
+
+        let agents = [];
+
+        if (this._agentManager) {
+            // Get LEFT tower agents
+            const leftAgents = this._agentManager.getAgentsByFloorAndTower(floorIndex, 'left');
+            // Get RIGHT tower agents
+            const rightAgents = this._agentManager.getAgentsByFloorAndTower(floorIndex, 'right');
+            agents = [...leftAgents, ...rightAgents];
+        }
+
+        if (agents.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'hr-fp-empty';
+            empty.textContent = 'No agents assigned to this floor';
+            roster.appendChild(empty);
+            container.appendChild(roster);
+            return;
+        }
+
+        agents.forEach(sprite => {
+            const def = sprite.def;
+            const state = sprite.state || 'idle';
+            const tower = def.tower || 'left';
+            const divInfo = DIVISIONS.find(d => d.id === def.division);
+
+            const row = document.createElement('div');
+            row.className = 'hr-fp-roster-row';
+            row.addEventListener('click', () => {
+                eventBus.emit('agent:selected', def);
+            });
+
+            // Avatar dot
+            const avatar = document.createElement('div');
+            avatar.className = 'hr-fp-roster-avatar';
+            avatar.style.background = divInfo ? divInfo.color : '#4A90D9';
+
+            // Name
+            const name = document.createElement('div');
+            name.className = 'hr-fp-roster-name';
+            name.textContent = def.name || def.id;
+
+            // Division tag
+            const divTag = document.createElement('span');
+            divTag.className = 'hr-fp-roster-div';
+            divTag.textContent = divInfo ? divInfo.name : (def.division || '');
+
+            // Status dot
+            const statusDot = document.createElement('div');
+            statusDot.className = 'hr-fp-roster-status';
+            statusDot.style.background = AGENT_STATE_COLORS[state] || '#5DADE2';
+            statusDot.title = state;
+
+            // Tower badge
+            const towerBadge = document.createElement('div');
+            towerBadge.className = 'hr-fp-roster-tower';
+            towerBadge.textContent = tower === 'right' ? 'R' : 'L';
+
+            row.appendChild(avatar);
+            row.appendChild(name);
+            row.appendChild(divTag);
+            row.appendChild(statusDot);
+            row.appendChild(towerBadge);
+            roster.appendChild(row);
+        });
+
+        container.appendChild(roster);
+    }
+
+    _renderActiveTasks(container, floorIndex) {
+        const tl = this._taskLogger;
+        // Get tasks for this floor from both towers
+        const tasks = tl.getTasksByFloor(floorIndex);
+
+        if (tasks.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'hr-fp-empty';
+            empty.textContent = 'No active tasks on this floor';
+            container.appendChild(empty);
+            return;
+        }
+
+        tasks.forEach(task => {
+            const card = document.createElement('div');
+            card.className = 'hr-fp-task-card';
+
+            // Header: ID + Priority
+            const header = document.createElement('div');
+            header.className = 'hr-fp-task-header';
+
+            const idEl = document.createElement('span');
+            idEl.className = 'hr-fp-task-id';
+            idEl.textContent = task.id;
+
+            const priority = document.createElement('span');
+            priority.className = 'hr-fp-task-priority ' + task.priority;
+            priority.textContent = task.priority;
+
+            header.appendChild(idEl);
+            header.appendChild(priority);
+            card.appendChild(header);
+
+            // Title
+            const title = document.createElement('div');
+            title.className = 'hr-fp-task-title';
+            title.textContent = task.title;
+            card.appendChild(title);
+
+            // Assigned agents
+            if (task.assignedAgents.length > 0) {
+                const agentsEl = document.createElement('div');
+                agentsEl.className = 'hr-fp-task-agents';
+                agentsEl.textContent = task.assignedAgents.join(', ');
+                card.appendChild(agentsEl);
+            }
+
+            // Progress bar
+            const progressTrack = document.createElement('div');
+            progressTrack.className = 'hr-fp-task-progress';
+
+            const progressFill = document.createElement('div');
+            progressFill.className = 'hr-fp-task-progress-fill' + (task.progress >= 100 ? ' complete' : '');
+            progressFill.style.width = task.progress + '%';
+
+            progressTrack.appendChild(progressFill);
+            card.appendChild(progressTrack);
+
+            container.appendChild(card);
+        });
+    }
+
+    _renderCompletedTasks(container, floorIndex) {
+        const tl = this._taskLogger;
+        const all = tl.getCompletedTasks(50);
+        const tasks = all.filter(t => t.targetFloor === floorIndex).slice(-10).reverse();
+
+        if (tasks.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'hr-fp-empty';
+            empty.textContent = 'No completed tasks for this floor';
+            container.appendChild(empty);
+            return;
+        }
+
+        tasks.forEach(task => {
+            const row = document.createElement('div');
+            row.className = 'hr-fp-completed-row';
+
+            const idEl = document.createElement('span');
+            idEl.className = 'hr-fp-completed-id';
+            idEl.textContent = task.id;
+
+            const titleEl = document.createElement('span');
+            titleEl.className = 'hr-fp-completed-title';
+            titleEl.textContent = task.title;
+
+            const durEl = document.createElement('span');
+            durEl.className = 'hr-fp-completed-duration';
+            durEl.textContent = this._formatDuration(task.duration);
+
+            const resultEl = document.createElement('span');
+            resultEl.className = 'hr-fp-completed-result ' + (task.status === 'failed' ? 'failed' : 'success');
+            resultEl.textContent = task.status === 'failed' ? 'FAIL' : 'OK';
+
+            row.appendChild(idEl);
+            row.appendChild(titleEl);
+            row.appendChild(durEl);
+            row.appendChild(resultEl);
+            container.appendChild(row);
+        });
+    }
+
+    _formatDuration(ms) {
+        if (!ms) return '-';
+        if (ms < 1000) return `${ms}ms`;
+        if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+        return `${(ms / 60000).toFixed(1)}min`;
     }
 
     _formatNumber(num) {
@@ -608,6 +853,14 @@ export class FloorPanel {
         this._unsubscribers.push(() => document.removeEventListener('keydown', keyHandler));
 
         // Listen for floor click from HUD sidebar
+        // Live-refresh tab content when tasks update
+        const unsub2 = eventBus.on('tasklog:update', () => {
+            if (this._isOpen && this._currentFloor && this._activeTab !== 'roster') {
+                this._render(this._currentFloor, this._currentProject);
+            }
+        });
+        this._unsubscribers.push(unsub2);
+
         const unsub1 = eventBus.on('hud:floorClick', ({ floorIndex, floor }) => {
             // Fetch project data if available
             let projectData = null;
@@ -700,8 +953,8 @@ export class FloorPanel {
 
 let _instance = null;
 
-export function createFloorPanel() {
-    if (!_instance) _instance = new FloorPanel();
+export function createFloorPanel(options) {
+    if (!_instance) _instance = new FloorPanel(options);
     return _instance;
 }
 
