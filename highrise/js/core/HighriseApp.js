@@ -30,6 +30,8 @@ import { ResourceGauges } from '../ui/ResourceGauges.js';
 import { BeeFranknBot } from '../bots/BeeFranknBot.js';
 import { FullySailSally } from '../bots/FullySailSally.js';
 import { botBridge } from '../bots/BotBridge.js';
+import { C2CommandChain } from '../agents/C2CommandChain.js';
+import { taskLogger } from './TaskLogger.js';
 
 export class HighriseApp {
     constructor(container) {
@@ -108,7 +110,17 @@ export class HighriseApp {
             this.beeFrank = new BeeFranknBot();
             this.sally = new FullySailSally();
             botBridge.connect(); // Starts in simulation mode
-            this._updateLoading(80, 'Connecting bots...');
+            this._updateLoading(78, 'Connecting bots...');
+
+            // C2 Command Chain - BeeFrank (F20) → FloorManagers → Agents
+            const projectsArr = projectsData?.projects || [];
+            const enterpriseFloors = floorsData?.floors?.filter(f => f.type === 'enterprise') || [];
+            this.c2 = new C2CommandChain(this.sceneManager.scene, this.agentManager, {
+                projects: projectsArr,
+                enterpriseFloors
+            });
+            await this.c2.init();
+            this._updateLoading(85, 'C2 command chain online...');
 
             // UI
             this.hud = new HUD();
@@ -237,6 +249,22 @@ export class HighriseApp {
             }
         });
 
+        // C2 floor navigation (from Telegram /floor command)
+        eventBus.on('camera:gotoFloor', (data) => {
+            const floor = data.floor || data.floorIndex || 1;
+            this.camera.zoomToFloor(floor);
+            stateManager.set('currentFloor', floor);
+        });
+
+        // C2 task log updates -> HUD
+        eventBus.on('tasklog:update', (stats) => {
+            eventBus.emit('hud:stats', {
+                activeTasks: stats.active,
+                completedTasks: stats.completedTotal,
+                activeSwarms: stats.swarming
+            });
+        });
+
         // Bot messages -> translucent wall effects
         eventBus.on('bot:message', (msg) => {
             if (msg.type === 'sync' || msg.type === 'deploy') {
@@ -323,6 +351,10 @@ export class HighriseApp {
         if (this.agentManager?.update) this.agentManager.update(this.clock.delta);
         if (this.onboarding?.update) this.onboarding.update(this.clock.delta);
         if (this.waterCooler?.update) this.waterCooler.update(this.clock.delta);
+        if (this.networking?.update) this.networking.update(this.clock.delta);
+
+        // C2 Command Chain (swarm effects, task tracking)
+        if (this.c2?.update) this.c2.update(this.clock.delta);
 
         // Enterprise floors
         if (this.lobby?.update) this.lobby.update(this.clock.delta);
