@@ -1,0 +1,15 @@
+{
+  "name": "tsi-highrise-monitor",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "System resource monitor for TSI Highrise Power Station",
+  "main": "monitor.js",
+  "scripts": {
+    "start": "node monitor.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.16.0",
+    "systeminformation": "^5.22.0"
+  }
+}

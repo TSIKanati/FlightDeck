@@ -1,0 +1,17 @@
+{
+  "name": "tsi-highrise-api",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "WebSocket relay and REST API for TSI Highrise 3D Command Center",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.16.0",
+    "cors": "^2.8.5",
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}

@@ -1,0 +1,90 @@
+services:
+  # ═══════════════════════════════════════════════════════
+  # TSI Enterprise 3D Command Center - "The Highrise"
+  # Twin Tower visualization of the entire TSI ecosystem
+  # ═══════════════════════════════════════════════════════
+
+  # 🏢 The 3D UI - Three.js frontend served as static files
+  highrise-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tsi-highrise
+    ports:
+      - "9080:8080"
+    volumes:
+      # Live reload during development - mount source files
+      - ./index.html:/app/index.html
+      - ./css:/app/css
+      - ./js:/app/js
+      - ./assets:/app/assets
+    restart: unless-stopped
+    networks:
+      - tsi-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://0.0.0.0:8080/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    labels:
+      - "com.tsi.project=FlightDeck"
+      - "com.tsi.component=highrise-ui"
+      - "com.tsi.floor=all"
+      - "com.tsi.description=3D Enterprise Command Center"
+
+  # 🔌 WebSocket relay + REST API for live agent/system data
+  highrise-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: tsi-highrise-api
+    ports:
+      - "8081:8081"
+    environment:
+      - NODE_ENV=production
+      - PORT=8081
+      - BEEFRANK_BOT_TOKEN=${BEEFRANK_BOT_TOKEN:-}
+      - SALLY_WS_URL=${SALLY_WS_URL:-ws://host.docker.internal:3001}
+      - CORS_ORIGIN=http://localhost:9080
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - tsi-network
+    depends_on:
+      highrise-ui:
+        condition: service_healthy
+    labels:
+      - "com.tsi.project=FlightDeck"
+      - "com.tsi.component=highrise-api"
+      - "com.tsi.floor=lobby"
+      - "com.tsi.bots=beefrank,sally"
+
+  # ⚡ Power Station - System resource monitor
+  highrise-monitor:
+    build:
+      context: ./monitor
+      dockerfile: Dockerfile
+    container_name: tsi-highrise-monitor
+    ports:
+      - "9082:8082"
+    environment:
+      - PORT=8082
+      - API_URL=http://highrise-api:8081
+      - POLL_INTERVAL=3000
+    pid: host
+    restart: unless-stopped
+    networks:
+      - tsi-network
+    depends_on:
+      - highrise-api
+    labels:
+      - "com.tsi.project=FlightDeck"
+      - "com.tsi.component=resource-monitor"
+      - "com.tsi.floor=power-station"
+
+networks:
+  tsi-network:
+    driver: bridge
+    name: tsi-enterprise-network
