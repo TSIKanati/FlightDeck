@@ -1,0 +1,60 @@
+{
+  "connections": [
+    {
+      "id": "frank-sally",
+      "from": "frank",
+      "to": "sally",
+      "type": "deployment",
+      "protocol": "WebSocket",
+      "description": "Code deployment from local to server",
+      "color": "#4A90D9"
+    },
+    {
+      "id": "frank-beefrank",
+      "from": "frank",
+      "to": "beefrank",
+      "type": "command",
+      "protocol": "Telegram API",
+      "description": "Human C2 command relay",
+      "color": "#FFD700"
+    },
+    {
+      "id": "frank-qwen",
+      "from": "frank",
+      "to": "qwen",
+      "type": "delegation",
+      "protocol": "Ollama API",
+      "description": "Task delegation to local LLM",
+      "color": "#2ECC71"
+    },
+    {
+      "id": "sally-beefrank",
+      "from": "sally",
+      "to": "beefrank",
+      "type": "notification",
+      "protocol": "Telegram API",
+      "description": "Server status notifications",
+      "color": "#E74C3C"
+    },
+    {
+      "id": "local-server-sync",
+      "from": "tower-left",
+      "to": "tower-right",
+      "type": "sync",
+      "protocol": "FTP/WebSocket",
+      "description": "File sync between local and server",
+      "color": "#3498DB"
+    }
+  ],
+  "botEndpoints": {
+    "beefrank": {
+      "botId": "8342114547",
+      "userId": "8333835942",
+      "username": "@BeeFranknBot"
+    },
+    "sally": {
+      "type": "websocket",
+      "username": "@FullySailSallyBot"
+    }
+  }
+}

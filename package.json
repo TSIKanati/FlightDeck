@@ -1,0 +1,29 @@
+{
+  "name": "tsi-flightdeck",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TSI Enterprise FlightDeck - Master Dashboard System",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:migrate": "node database/migrate.js",
+    "db:seed": "node database/seed.js",
+    "clean": "turbo run clean && rimraf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "rimraf": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "npm@10.9.2"
+}
