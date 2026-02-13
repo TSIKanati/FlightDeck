@@ -72,6 +72,16 @@ export class SallyC2 {
         eventBus.on('task:completed', (data) => this._handleCompletion(data));
         eventBus.on('task:failed', (data) => this._handleFailure(data));
 
+        // Handle beefrank:reply from RIGHT tower - forward to c2:reply for HUD
+        eventBus.on('sally:reply', (data) => {
+            eventBus.emit('c2:reply', {
+                text: data.text,
+                chatId: data.chatId,
+                source: 'sally',
+                timestamp: Date.now(),
+            });
+        });
+
         this._initialized = true;
         console.log(`[SallyC2] RIGHT tower C2 initialized: ${this.floorManagers.size} floor managers, ${this.serverAgents.length} server agents`);
         eventBus.emit('sallyC2:ready', {
@@ -131,6 +141,20 @@ export class SallyC2 {
 
         // Notify Sally bot
         eventBus.emit('sally:deploy:start', { project, source });
+
+        // Emit deploy pipeline stages for TranslucentWall visualization
+        const stages = ['build', 'test', 'deploy', 'verify'];
+        stages.forEach((stage, i) => {
+            setTimeout(() => {
+                eventBus.emit('deploy:stage', {
+                    project,
+                    stage,
+                    stageIndex: i,
+                    totalStages: stages.length,
+                    timestamp: Date.now(),
+                });
+            }, i * 2000);
+        });
     }
 
     // ─── Sync ────────────────────────────────────────────
@@ -227,6 +251,9 @@ export class SallyC2 {
                 tower: 'right'
             });
         }
+
+        // Emit sally:taskCreated for TowerBridge tracking
+        eventBus.emit('sally:taskCreated', { ...task });
 
         // Track
         this.activeTasks.set(task.id, {

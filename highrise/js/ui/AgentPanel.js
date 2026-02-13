@@ -11,6 +11,8 @@
 
 import { eventBus } from '../core/EventBus.js';
 import { stateManager } from '../core/StateManager.js';
+import { agentMetrics as defaultAgentMetrics } from '../core/AgentMetrics.js';
+import { knowledgeBase as defaultKnowledgeBase } from '../core/KnowledgeBase.js';
 
 // ---------------------------------------------------------------------------
 // Status configuration
@@ -325,12 +327,14 @@ function _injectStyles() {
 // ---------------------------------------------------------------------------
 
 export class AgentPanel {
-    constructor() {
+    constructor({ agentMetrics, knowledgeBase } = {}) {
         this._panel = null;
         this._isOpen = false;
         this._currentAgent = null;
         this._activityLog = new Map(); // agentId -> [{time, message, color}]
         this._unsubscribers = [];
+        this._agentMetrics = agentMetrics || defaultAgentMetrics;
+        this._knowledgeBase = knowledgeBase || defaultKnowledgeBase;
 
         _injectStyles();
         this._build();
@@ -587,6 +591,9 @@ export class AgentPanel {
             panel.appendChild(connSection);
         }
 
+        // ---- Performance Metrics ----
+        this._renderPerformanceSection(panel, agent);
+
         // ---- Action Buttons ----
         const actions = document.createElement('div');
         actions.className = 'hr-ap-actions';
@@ -694,6 +701,103 @@ export class AgentPanel {
         const h = String(d.getHours()).padStart(2, '0');
         const m = String(d.getMinutes()).padStart(2, '0');
         return `${h}:${m}`;
+    }
+
+    // -----------------------------------------------------------------------
+    // Performance Section
+    // -----------------------------------------------------------------------
+
+    _renderPerformanceSection(panel, agent) {
+        const stats = this._agentMetrics.getAgentStats(agent.id);
+
+        const section = document.createElement('div');
+        section.className = 'hr-ap-section';
+
+        const title = document.createElement('div');
+        title.className = 'hr-ap-section-title';
+        title.textContent = 'PERFORMANCE';
+        section.appendChild(title);
+
+        // Stats grid
+        const grid = document.createElement('div');
+        grid.className = 'hr-ap-perf-grid';
+
+        const statItems = [
+            { label: 'COMPLETED', value: stats.completed, color: '#2ECC71' },
+            { label: 'SUCCESS RATE', value: stats.successRate + '%', color: '#3498DB' },
+            { label: 'AVG DURATION', value: this._formatDuration(stats.avgDuration), color: '#F39C12' },
+            { label: 'STREAK', value: stats.streak, color: '#9B59B6' },
+        ];
+
+        statItems.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'hr-ap-perf-card';
+
+            const val = document.createElement('div');
+            val.className = 'hr-ap-perf-value';
+            val.style.color = item.color;
+            val.textContent = item.value;
+
+            const lbl = document.createElement('div');
+            lbl.className = 'hr-ap-perf-label';
+            lbl.textContent = item.label;
+
+            card.appendChild(val);
+            card.appendChild(lbl);
+            grid.appendChild(card);
+        });
+
+        section.appendChild(grid);
+
+        // Mini bar chart of last 10 task durations
+        if (stats.recentDurations && stats.recentDurations.length > 0) {
+            const chartWrap = document.createElement('div');
+            chartWrap.className = 'hr-ap-perf-chart';
+
+            const maxDur = Math.max(1, ...stats.recentDurations);
+            stats.recentDurations.forEach(dur => {
+                const bar = document.createElement('div');
+                bar.className = 'hr-ap-perf-bar';
+                bar.style.height = `${Math.max(2, (dur / maxDur) * 30)}px`;
+                bar.title = this._formatDuration(dur);
+                chartWrap.appendChild(bar);
+            });
+
+            section.appendChild(chartWrap);
+        }
+
+        // Top Skills based on task type frequency
+        if (stats.taskTypes && Object.keys(stats.taskTypes).length > 0) {
+            const skillsWrap = document.createElement('div');
+            skillsWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;';
+            const sorted = Object.entries(stats.taskTypes).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            sorted.forEach(([type, count]) => {
+                const tag = document.createElement('span');
+                tag.className = 'hr-ap-cap-tag';
+                tag.textContent = `${type} (${count})`;
+                skillsWrap.appendChild(tag);
+            });
+            section.appendChild(skillsWrap);
+        }
+
+        // Cross-tower indicator
+        if (agent.tower) {
+            const crossInfo = document.createElement('div');
+            crossInfo.style.cssText = 'margin-top:8px;font-size:10px;color:#556677;';
+            crossInfo.textContent = agent.tower === 'right'
+                ? 'Server Tower Agent - may have counterparts on Local Tower'
+                : 'Local Tower Agent - may have counterparts on Server Tower';
+            section.appendChild(crossInfo);
+        }
+
+        panel.appendChild(section);
+    }
+
+    _formatDuration(ms) {
+        if (!ms) return '0s';
+        if (ms < 1000) return `${Math.round(ms)}ms`;
+        if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+        return `${(ms / 60000).toFixed(1)}min`;
     }
 
     // -----------------------------------------------------------------------

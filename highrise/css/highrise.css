@@ -816,6 +816,144 @@ canvas {
     font-style: italic;
 }
 
+/* ---- Phase 2: Agent Performance Metrics Grid ---- */
+.hr-ap-perf-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.hr-ap-perf-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(74,144,217,0.1);
+    border-radius: 6px;
+    padding: 8px 10px;
+    text-align: center;
+}
+.hr-ap-perf-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--hr-text);
+}
+.hr-ap-perf-label {
+    font-size: 8px;
+    color: var(--hr-text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+.hr-ap-perf-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 34px;
+    padding: 2px 0;
+    margin-top: 8px;
+    border-bottom: 1px solid rgba(74,144,217,0.1);
+}
+.hr-ap-perf-bar {
+    flex: 1;
+    min-width: 6px;
+    background: rgba(74,144,217,0.4);
+    border-radius: 2px 2px 0 0;
+    transition: height 0.3s;
+}
+.hr-ap-perf-bar:hover {
+    background: rgba(74,144,217,0.7);
+}
+
+/* ---- Phase 2: Bridge Status Indicators ---- */
+.hr-bridge-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+.hr-bridge-indicator.healthy {
+    background: rgba(0,229,255,0.1);
+    color: #00e5ff;
+    border: 1px solid rgba(0,229,255,0.3);
+}
+.hr-bridge-indicator.warning {
+    background: rgba(243,156,18,0.1);
+    color: var(--hr-warning);
+    border: 1px solid rgba(243,156,18,0.3);
+}
+.hr-bridge-indicator.alert {
+    background: rgba(231,76,60,0.15);
+    color: var(--hr-danger);
+    border: 1px solid rgba(231,76,60,0.3);
+    animation: hr-bridge-flash 0.5s ease 3;
+}
+@keyframes hr-bridge-flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ---- Phase 2: KB Entry Type Colors ---- */
+.hr-kb-type-note { color: #3498DB; }
+.hr-kb-type-decision { color: #2ECC71; }
+.hr-kb-type-blocker { color: #E74C3C; }
+.hr-kb-type-milestone { color: #F39C12; }
+.hr-kb-type-reference { color: #9B59B6; }
+.hr-kb-type-lesson { color: #1ABC9C; }
+
+/* ---- Phase 2: Dedup Warning Flash ---- */
+.hr-dedup-flash {
+    position: fixed;
+    top: 44px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--hr-danger), transparent);
+    z-index: 200;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+}
+.hr-dedup-flash.active {
+    opacity: 1;
+    animation: hr-dedup-fade 0.8s ease forwards;
+}
+@keyframes hr-dedup-fade {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* ---- Phase 2: HUD Notification for c2:reply ---- */
+.hr-hud-notification {
+    position: fixed;
+    top: 50px;
+    left: 60px;
+    max-width: 360px;
+    background: rgba(10,15,30,0.95);
+    border: 1px solid rgba(74,144,217,0.3);
+    border-left: 3px solid var(--hr-accent);
+    border-radius: 0 6px 6px 0;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--hr-text);
+    z-index: 200;
+    font-family: var(--hr-font-mono);
+    animation: hr-notification-in 0.3s ease;
+    pointer-events: auto;
+}
+.hr-hud-notification .source-tag {
+    font-size: 9px;
+    color: var(--hr-accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+@keyframes hr-notification-in {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
     .hr-panel { width: 100%; right: -100%; }

@@ -33,6 +33,10 @@ import { botBridge } from '../bots/BotBridge.js';
 import { C2CommandChain } from '../agents/C2CommandChain.js';
 import { SallyC2 } from '../agents/SallyC2.js';
 import { taskLogger } from './TaskLogger.js';
+import { towerBridge } from './TowerBridge.js';
+import { knowledgeBase } from './KnowledgeBase.js';
+import { agentMetrics } from './AgentMetrics.js';
+import { createTaskAssignModal } from '../ui/TaskAssignModal.js';
 
 export class HighriseApp {
     constructor(container) {
@@ -139,13 +143,32 @@ export class HighriseApp {
             this.c2.setSallyC2(this.sallyC2);
             this._updateLoading(85, 'Sally C2 RIGHT tower online...');
 
+            // Phase 2: TowerBridge, KnowledgeBase, AgentMetrics
+            this.towerBridge = towerBridge;
+            towerBridge.init(this.c2, this.sallyC2, this.agentManager);
+            this.c2.setTowerBridge(towerBridge);
+
+            this.knowledgeBase = knowledgeBase;
+            knowledgeBase.init();
+
+            this.agentMetrics = agentMetrics;
+            agentMetrics.init();
+            this._updateLoading(87, 'Cross-tower bridge online...');
+
             // UI
             this.hud = new HUD();
-            this.floorPanel = new FloorPanel({ agentManager: this.agentManager, taskLogger });
-            this.agentPanel = new AgentPanel();
+            this.floorPanel = new FloorPanel({ agentManager: this.agentManager, taskLogger, knowledgeBase, towerBridge });
+            this.agentPanel = new AgentPanel({ agentMetrics, knowledgeBase });
             this.elevator = new ElevatorUI();
             this.minimap = new MiniMap();
             this.resourceGauges = new ResourceGauges();
+
+            // Task Assign Modal
+            this.taskAssignModal = createTaskAssignModal({
+                agentManager: this.agentManager,
+                taskLogger,
+                towerBridge,
+            });
             this._updateLoading(90, 'Activating HUD...');
 
             // Event wiring
@@ -290,6 +313,22 @@ export class HighriseApp {
                     Math.floor(Math.random() * 20) + 1
                 );
             }
+        });
+
+        // Phase 2: Wire TaskAssignModal to floorPanel:assignAgent
+        eventBus.on('floorPanel:assignAgent', (data) => {
+            if (this.taskAssignModal) {
+                this.taskAssignModal.show(data.floor, data.project);
+            }
+        });
+
+        // Phase 2: c2:reply -> HUD notification area
+        eventBus.on('c2:reply', (data) => {
+            eventBus.emit('hud:notification', {
+                text: data.text,
+                source: data.source || 'c2',
+                timestamp: data.timestamp || Date.now(),
+            });
         });
     }
 

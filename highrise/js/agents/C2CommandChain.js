@@ -44,7 +44,19 @@ export class C2CommandChain {
         /** @type {import('./SallyC2.js').SallyC2|null} Linked RIGHT tower C2 */
         this.sallyC2 = null;
 
+        /** @type {import('../core/TowerBridge.js').TowerBridge|null} Cross-tower bridge */
+        this.towerBridge = null;
+
         this._initialized = false;
+    }
+
+    /**
+     * Link TowerBridge for cross-tower dedup
+     * @param {object} bridge
+     */
+    setTowerBridge(bridge) {
+        this.towerBridge = bridge;
+        console.log('[C2] TowerBridge linked - dedup enabled');
     }
 
     /**
@@ -116,6 +128,16 @@ export class C2CommandChain {
         // Listen for task completions to report back up
         eventBus.on('task:completed', (data) => this._reportCompletion(data));
         eventBus.on('task:failed', (data) => this._reportFailure(data));
+
+        // Handle beefrank:reply - forward to UI via c2:reply (fix dead end)
+        eventBus.on('beefrank:reply', (data) => {
+            eventBus.emit('c2:reply', {
+                text: data.text,
+                chatId: data.chatId,
+                source: 'beefrank',
+                timestamp: Date.now(),
+            });
+        });
 
         // Listen for direct API commands
         eventBus.on('BEEFRANK_MESSAGE', (data) => this._parseBeeFrankMessage(data));
@@ -220,6 +242,21 @@ export class C2CommandChain {
     _createAndDelegate(args, source, chatId) {
         const { title, description = '', project, floor, priority = 'normal', division } = args;
 
+        // TowerBridge dedup check
+        if (this.towerBridge) {
+            const isDupe = this.towerBridge.isDuplicate({ title, targetProject: project, targetFloor: floor });
+            if (isDupe) {
+                console.warn(`[C2] TowerBridge blocked duplicate: "${title}"`);
+                if (chatId) {
+                    eventBus.emit('beefrank:reply', {
+                        chatId,
+                        text: `DUPLICATE BLOCKED: "${title}" already exists on another tower`
+                    });
+                }
+                return null;
+            }
+        }
+
         // Determine which tower handles this task
         const tower = this._determineTower(title || '', description);
 
@@ -235,6 +272,9 @@ export class C2CommandChain {
             targetDivision: division,
             tower
         });
+
+        // Emit c2:taskCreated for TowerBridge tracking
+        eventBus.emit('c2:taskCreated', { ...task });
 
         // Route to RIGHT tower via Sally C2
         if ((tower === 'right' || tower === 'both') && this.sallyC2) {

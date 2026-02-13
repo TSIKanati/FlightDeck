@@ -60,6 +60,8 @@ const TYPE_COLORS = {
     command:    new THREE.Color(0xd4af37),  // gold
     data:       new THREE.Color(0x9b59b6),  // purple
     alert:      new THREE.Color(0xe74c3c),  // red
+    bridge:     new THREE.Color(0x00e5ff),  // cyan (cross-tower)
+    knowledge:  new THREE.Color(0xffffff),  // white (KB)
 };
 const TYPE_KEYS = Object.keys(TYPE_COLORS);
 
@@ -491,6 +493,39 @@ class TranslucentWallClass {
                 _spawnDirected(data.floor || 20, data.targetFloor || 15, 'deployment');
                 _spawnDirected(data.floor || 20, data.targetFloor || 15, 'deployment');
             }
+        });
+
+        // TowerBridge cross-tower events → cyan bridge particles
+        eventBus.on('bridge:crossTower', (data) => {
+            const fromFloor = data.fromFloor || 20;
+            const toFloor = data.toFloor || 15;
+            _spawnDirected(fromFloor, toFloor, 'bridge');
+            _spawnDirected(fromFloor, toFloor, 'bridge');
+        });
+
+        // TowerBridge duplicate detection → red flash
+        eventBus.on('bridge:duplicate', () => {
+            _pulseIntensity = 1.0;
+            // Flash connection lines red briefly
+            _connectionLines.forEach(line => {
+                line.material.color.copy(TYPE_COLORS.alert);
+                line.material.opacity = 0.8;
+            });
+            // Reset after 500ms
+            setTimeout(() => {
+                _connectionLines.forEach(line => {
+                    line.material.color.set(0x1a3060);
+                });
+            }, 500);
+        });
+
+        // Deploy pipeline stages → sequential particles
+        eventBus.on('deploy:stage', (data) => {
+            const stageColors = { build: 'sync', test: 'data', deploy: 'deployment', verify: 'command' };
+            const type = stageColors[data.stage] || 'deployment';
+            const fromFloor = 15 + (data.stageIndex || 0);
+            _spawnDirected(fromFloor, fromFloor, type);
+            _pulseIntensity = Math.max(_pulseIntensity, 0.4);
         });
 
         eventBus.emit('wall:ready');

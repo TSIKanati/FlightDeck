@@ -307,7 +307,7 @@ function _injectStyles() {
 // ---------------------------------------------------------------------------
 
 export class FloorPanel {
-    constructor({ agentManager, taskLogger } = {}) {
+    constructor({ agentManager, taskLogger, knowledgeBase, towerBridge } = {}) {
         this._panel = null;
         this._isOpen = false;
         this._currentFloor = null;
@@ -315,6 +315,8 @@ export class FloorPanel {
         this._activeTab = 'roster';
         this._agentManager = agentManager || null;
         this._taskLogger = taskLogger || defaultTaskLogger;
+        this._knowledgeBase = knowledgeBase || null;
+        this._towerBridge = towerBridge || null;
         this._unsubscribers = [];
 
         _injectStyles();
@@ -554,9 +556,9 @@ export class FloorPanel {
             eventBus.emit('floorPanel:viewInterior', { floorIndex: floorData.index });
         });
 
-        const btnAssign = this._createButton('Assign Agent');
+        const btnAssign = this._createButton('Assign Task');
         btnAssign.addEventListener('click', () => {
-            eventBus.emit('floorPanel:assignAgent', { floorIndex: floorData.index });
+            eventBus.emit('floorPanel:assignAgent', { floor: floorData.index, project: floorData.projectId });
         });
 
         const btnLink = this._createButton('FlightDeck');
@@ -568,6 +570,11 @@ export class FloorPanel {
         actions.appendChild(btnAssign);
         actions.appendChild(btnLink);
         panel.appendChild(actions);
+
+        // ---- Knowledge Base Mini-Section ----
+        if (this._knowledgeBase && floorData.projectId) {
+            this._renderKBSection(panel, floorData);
+        }
 
         // ---- Tab Bar (Roster / Tasks / History) ----
         this._renderTabBar(panel, floorData);
@@ -839,6 +846,97 @@ export class FloorPanel {
     }
 
     // -----------------------------------------------------------------------
+    // Knowledge Base Mini-Section
+    // -----------------------------------------------------------------------
+
+    _renderKBSection(panel, floorData) {
+        const kb = this._knowledgeBase;
+        const projectId = floorData.projectId;
+        const recentEntries = kb.getRecentEntries(projectId, 3);
+
+        const section = document.createElement('div');
+        section.className = 'hr-fp-section';
+
+        const titleRow = document.createElement('div');
+        titleRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;';
+
+        const sectionTitle = document.createElement('div');
+        sectionTitle.className = 'hr-fp-section-title';
+        sectionTitle.style.marginBottom = '0';
+        sectionTitle.textContent = 'KNOWLEDGE BASE';
+
+        const viewAllBtn = document.createElement('span');
+        viewAllBtn.style.cssText = 'font-size:9px;color:#4A90D9;cursor:pointer;text-transform:uppercase;letter-spacing:1px;';
+        viewAllBtn.textContent = 'VIEW ALL';
+        viewAllBtn.addEventListener('click', () => {
+            eventBus.emit('kb:viewAll', { projectId });
+        });
+
+        titleRow.appendChild(sectionTitle);
+        titleRow.appendChild(viewAllBtn);
+        section.appendChild(titleRow);
+
+        // Recent entries
+        if (recentEntries.length === 0) {
+            const empty = document.createElement('div');
+            empty.style.cssText = 'font-size:11px;color:#445566;font-style:italic;margin-bottom:10px;';
+            empty.textContent = 'No knowledge entries yet';
+            section.appendChild(empty);
+        } else {
+            recentEntries.forEach(entry => {
+                const row = document.createElement('div');
+                row.style.cssText = 'padding:4px 0;border-bottom:1px solid rgba(74,144,217,0.06);font-size:11px;';
+
+                const typeTag = document.createElement('span');
+                typeTag.style.cssText = 'font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(74,144,217,0.1);color:#8899bb;margin-right:6px;text-transform:uppercase;letter-spacing:0.5px;';
+                typeTag.textContent = entry.type;
+
+                const content = document.createElement('span');
+                content.style.color = '#a0b4d0';
+                content.textContent = entry.content.length > 60 ? entry.content.slice(0, 60) + '...' : entry.content;
+
+                row.appendChild(typeTag);
+                row.appendChild(content);
+                section.appendChild(row);
+            });
+        }
+
+        // Add Note inline
+        const addRow = document.createElement('div');
+        addRow.style.cssText = 'display:flex;gap:6px;margin-top:8px;';
+
+        const noteInput = document.createElement('input');
+        noteInput.className = 'hr-fp-kb-input';
+        noteInput.style.cssText = 'flex:1;padding:5px 8px;background:rgba(255,255,255,0.04);border:1px solid rgba(74,144,217,0.2);border-radius:3px;color:#e0e8f0;font-family:inherit;font-size:11px;outline:none;';
+        noteInput.placeholder = 'Add a note...';
+
+        const addBtn = document.createElement('button');
+        addBtn.className = 'hr-fp-btn';
+        addBtn.style.cssText = 'flex:none;padding:5px 10px;font-size:9px;';
+        addBtn.textContent = 'ADD';
+        addBtn.addEventListener('click', () => {
+            const text = noteInput.value.trim();
+            if (text) {
+                kb.addEntry(projectId, { type: 'note', content: text, source: 'floorPanel' });
+                noteInput.value = '';
+                // Re-render to show new entry
+                if (this._isOpen && this._currentFloor) {
+                    this._render(this._currentFloor, this._currentProject);
+                }
+            }
+        });
+        noteInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') addBtn.click();
+        });
+
+        addRow.appendChild(noteInput);
+        addRow.appendChild(addBtn);
+        section.appendChild(addRow);
+
+        panel.appendChild(section);
+    }
+
+    // -----------------------------------------------------------------------
     // Event Binding
     // -----------------------------------------------------------------------
 
@@ -852,7 +950,6 @@ export class FloorPanel {
         document.addEventListener('keydown', keyHandler);
         this._unsubscribers.push(() => document.removeEventListener('keydown', keyHandler));
 
-        // Listen for floor click from HUD sidebar
         // Live-refresh tab content when tasks update
         const unsub2 = eventBus.on('tasklog:update', () => {
             if (this._isOpen && this._currentFloor && this._activeTab !== 'roster') {
@@ -860,6 +957,40 @@ export class FloorPanel {
             }
         });
         this._unsubscribers.push(unsub2);
+
+        // Live agent roster refresh - re-render roster when agent states change
+        const unsub3 = eventBus.on('agent:stateChanged', () => {
+            if (this._isOpen && this._currentFloor && this._activeTab === 'roster') {
+                this._render(this._currentFloor, this._currentProject);
+            }
+        });
+        this._unsubscribers.push(unsub3);
+
+        // Update agent status dots without full re-render
+        const unsub4 = eventBus.on('registry:statusChanged', ({ id, status }) => {
+            if (this._isOpen && this._activeTab === 'roster') {
+                // Lightweight: just update dots if roster is visible
+                const dots = this._panel.querySelectorAll('.hr-fp-roster-status');
+                dots.forEach(dot => {
+                    if (dot.title === id) {
+                        const stateColor = AGENT_STATE_COLORS[status] || '#5DADE2';
+                        dot.style.background = stateColor;
+                        dot.title = status;
+                    }
+                });
+            }
+        });
+        this._unsubscribers.push(unsub4);
+
+        // KB updates refresh
+        const unsub5 = eventBus.on('kb:updated', () => {
+            if (this._isOpen && this._currentFloor) {
+                this._render(this._currentFloor, this._currentProject);
+            }
+        });
+        this._unsubscribers.push(unsub5);
+
+        // Listen for floor click from HUD sidebar
 
         const unsub1 = eventBus.on('hud:floorClick', ({ floorIndex, floor }) => {
             // Fetch project data if available

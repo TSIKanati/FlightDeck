@@ -213,6 +213,8 @@ export class ResourceGauges {
         this._history = {};        // key: 'local.cpu' -> number[]
         this._values = {};         // key: 'local.cpu' -> number
         this._unsubscribers = [];
+        this._hasLiveData = false; // Whether we've received live WS data
+        this._liveDataTimeout = null;
 
         // Initialize history and values
         ['local', 'server'].forEach(side => {
@@ -222,6 +224,10 @@ export class ResourceGauges {
                 this._values[key] = 0;
             });
         });
+
+        // Bridge status gauge
+        this._history['bridge.sync'] = [];
+        this._values['bridge.sync'] = 0;
 
         _injectStyles();
         this._build();
@@ -284,6 +290,24 @@ export class ResourceGauges {
         });
 
         container.appendChild(columns);
+
+        // Bridge Sync gauge (single gauge below the columns)
+        const bridgeSection = document.createElement('div');
+        bridgeSection.style.cssText = 'margin-top:14px;padding-top:12px;border-top:1px solid rgba(74,144,217,0.15);text-align:center;';
+
+        const bridgeTitle = document.createElement('div');
+        bridgeTitle.className = 'hr-gauges-col-title';
+        bridgeTitle.textContent = 'TOWER BRIDGE SYNC';
+        bridgeSection.appendChild(bridgeTitle);
+
+        const bridgeRow = document.createElement('div');
+        bridgeRow.style.cssText = 'display:flex;justify-content:center;';
+        const bridgeGauge = this._buildGauge('bridge', { id: 'sync', label: 'SYNC', icon: '\uD83C\uDF09' });
+        bridgeRow.appendChild(bridgeGauge);
+        bridgeSection.appendChild(bridgeRow);
+
+        container.appendChild(bridgeSection);
+
         this._root.appendChild(container);
         document.body.appendChild(this._root);
     }
@@ -462,9 +486,39 @@ export class ResourceGauges {
 
         // Accept live resource data
         const unsub2 = eventBus.on('resources:update', ({ side, type, value }) => {
+            this._hasLiveData = true;
             this.updateGauge(side, type, value);
         });
         this._unsubscribers.push(unsub2);
+
+        // Listen for sally:health WebSocket events → parse into gauge updates
+        const unsub3 = eventBus.on('sally:health', (data) => {
+            this._hasLiveData = true;
+            if (data.cpu !== undefined) this.updateGauge('server', 'cpu', data.cpu);
+            if (data.ram !== undefined) this.updateGauge('server', 'ram', data.ram);
+            if (data.bandwidth !== undefined) this.updateGauge('server', 'bandwidth', data.bandwidth);
+            if (data.storage !== undefined) this.updateGauge('server', 'storage', data.storage);
+        });
+        this._unsubscribers.push(unsub3);
+
+        // TowerBridge status → bridge sync gauge
+        const unsub4 = eventBus.on('bridge:status', (status) => {
+            const total = status.leftTasks + status.rightTasks + status.sharedTasks;
+            const syncHealth = total > 0
+                ? Math.min(100, Math.round(((status.sharedTasks + 1) / (total + 1)) * 100))
+                : 50;
+            this._values['bridge.sync'] = syncHealth;
+            if (this._gauges['bridge.sync']) {
+                this._updateGaugeVisual('bridge.sync', syncHealth);
+            }
+        });
+        this._unsubscribers.push(unsub4);
+
+        // AgentMetrics throughput updates
+        const unsub5 = eventBus.on('metrics:updated', () => {
+            // Throughput sparkline could update here if needed
+        });
+        this._unsubscribers.push(unsub5);
 
         // ESC to close
         const keyHandler = (e) => {
@@ -520,7 +574,7 @@ export class ResourceGauges {
     }
 
     /**
-     * Start simulated monitoring (generates random fluctuating values).
+     * Start monitoring - uses live data if available, falls back to simulation after 5s.
      */
     startMonitoring() {
         if (this._monitoring) return;
@@ -528,22 +582,32 @@ export class ResourceGauges {
 
         // Initialize values if empty
         Object.keys(this._values).forEach(key => {
-            if (this._values[key] === 0) {
+            if (this._values[key] === 0 && key !== 'bridge.sync') {
                 this._values[key] = 20 + Math.random() * 40;
             }
         });
 
+        // Wait 5s for live data before falling back to simulation
+        this._liveDataTimeout = setTimeout(() => {
+            if (!this._hasLiveData) {
+                console.log('[ResourceGauges] No live WS data after 5s, using simulation fallback');
+            }
+        }, 5000);
+
         this._monitorInterval = setInterval(() => {
             if (!this._isVisible) return;
 
+            // Only simulate for keys that don't have live data
             Object.keys(this._values).forEach(key => {
+                if (key === 'bridge.sync') return; // Bridge is event-driven only
+                if (this._hasLiveData && key.startsWith('server.')) return; // Skip server gauges if live
                 const val = this._simulateValue(key);
                 this._updateGaugeVisual(key, val);
             });
 
             // Emit alerts for high values
             Object.entries(this._values).forEach(([key, val]) => {
-                if (val > 90) {
+                if (val > 90 && key !== 'bridge.sync') {
                     const parts = key.split('.');
                     eventBus.emit('alert:new', {
                         message: `WARNING: ${parts[0].toUpperCase()} ${parts[1].toUpperCase()} at ${Math.round(val)}%`,
