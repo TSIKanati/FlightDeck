@@ -1,0 +1,48 @@
+{
+  "towers": {
+    "left": {
+      "name": "Local System",
+      "subtitle": "ASUS ProArt StudioBook",
+      "position": { "x": -8, "y": 0, "z": 0 }
+    },
+    "right": {
+      "name": "Server System",
+      "subtitle": "@FullySailSallyBot VPS",
+      "position": { "x": 8, "y": 0, "z": 0 }
+    }
+  },
+  "floors": [
+    { "index": -2, "id": "power-station", "name": "POWER STATION", "emoji": "\u26a1", "type": "enterprise", "color": "#FF4444" },
+    { "index": -1, "id": "test-bunker", "name": "TEST BUNKER", "emoji": "\ud83d\udd2c", "type": "enterprise", "color": "#666666" },
+    { "index": 1, "id": "lobby", "name": "LOBBY", "emoji": "\ud83c\udfdb\ufe0f", "type": "enterprise", "color": "#D4AF37" },
+    { "index": 2, "id": "water-cooler", "name": "WATER COOLER", "emoji": "\ud83d\udde3\ufe0f", "type": "social", "color": "#5DADE2" },
+    { "index": 3, "id": "onboarding", "name": "ONBOARDING EXPO", "emoji": "\ud83c\udfd7\ufe0f", "type": "social", "color": "#58D68D" },
+    { "index": 4, "id": "translatorstitan", "name": "TranslatorsTitan", "emoji": "\ud83d\ude80", "type": "project", "color": "#BDC3C7", "projectId": "translatorstitan" },
+    { "index": 5, "id": "machinistzen", "name": "MachinistZen", "emoji": "\ud83d\udd27", "type": "project", "color": "#95A5A6", "projectId": "machinistzen" },
+    { "index": 6, "id": "realworldprizes", "name": "RealWorldPrizes", "emoji": "\ud83c\udfc6", "type": "project", "color": "#F39C12", "projectId": "realworldprizes" },
+    { "index": 7, "id": "quantumledger", "name": "QuantumLedger", "emoji": "\u269b\ufe0f", "type": "project", "color": "#8E44AD", "projectId": "quantumledger" },
+    { "index": 8, "id": "parlorgames", "name": "ParlorGames", "emoji": "\ud83c\udfb2", "type": "project", "color": "#9B59B6", "projectId": "parlorgames" },
+    { "index": 9, "id": "onthewayhome", "name": "OnTheWayHome", "emoji": "\ud83c\udfe0", "type": "project", "color": "#1ABC9C", "projectId": "onthewayhome" },
+    { "index": 10, "id": "autozen", "name": "AutoZen", "emoji": "\ud83d\ude97", "type": "project", "color": "#3498DB", "projectId": "autozen" },
+    { "index": 11, "id": "ideallearning", "name": "IdealLearning", "emoji": "\ud83d\udcda", "type": "project", "color": "#2ECC71", "projectId": "ideallearning" },
+    { "index": 12, "id": "guestofhonor", "name": "GuestOfHonor", "emoji": "\ud83c\udfa9", "type": "project", "color": "#FFD700", "projectId": "guestofhonor" },
+    { "index": 13, "id": "charitypats", "name": "CharityPats", "emoji": "\ud83d\udc3e", "type": "project", "color": "#E74C3C", "projectId": "charitypats" },
+    { "index": 14, "id": "clieair", "name": "CLIEAIR", "emoji": "\ud83e\udd16", "type": "project", "color": "#4A90D9", "projectId": "clieair" },
+    { "index": 15, "id": "tsiapp", "name": "TSIAPP", "emoji": "\ud83e\udd86", "type": "project", "color": "#FF6600", "projectId": "tsiapp" },
+    { "index": 16, "id": "finance", "name": "ENTERPRISE FINANCE", "emoji": "\ud83d\udcb0", "type": "enterprise", "color": "#27AE60" },
+    { "index": 17, "id": "rnd", "name": "ENTERPRISE R&D", "emoji": "\ud83d\udd2c", "type": "enterprise", "color": "#2980B9" },
+    { "index": 18, "id": "legal", "name": "ENTERPRISE LEGAL", "emoji": "\u2696\ufe0f", "type": "enterprise", "color": "#8B4513" },
+    { "index": 19, "id": "security", "name": "ENTERPRISE SECURITY", "emoji": "\ud83d\udd12", "type": "enterprise", "color": "#C0392B" },
+    { "index": 20, "id": "observation", "name": "OBSERVATION DECK", "emoji": "\u2601\ufe0f", "type": "enterprise", "color": "#3498DB" }
+  ],
+  "divisions": [
+    { "id": "marketing", "name": "Marketing", "emoji": "\ud83d\udce2", "color": "#E67E22" },
+    { "id": "rnd", "name": "R&D", "emoji": "\ud83d\udd2c", "color": "#3498DB" },
+    { "id": "testing", "name": "Testing", "emoji": "\ud83e\uddea", "color": "#E74C3C" },
+    { "id": "production", "name": "Production", "emoji": "\ud83c\udfed", "color": "#2ECC71" },
+    { "id": "security", "name": "Security", "emoji": "\ud83d\udd12", "color": "#C0392B" },
+    { "id": "legal", "name": "Legal", "emoji": "\u2696\ufe0f", "color": "#8B4513" },
+    { "id": "accounting", "name": "Accounting", "emoji": "\ud83d\udcb0", "color": "#27AE60" },
+    { "id": "meeting", "name": "Meeting Room", "emoji": "\ud83d\udde3\ufe0f", "color": "#9B59B6" }
+  ]
+}

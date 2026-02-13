@@ -1,0 +1,16 @@
+# Plesk/IIS
+.user.ini
+App_Data/
+nul
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log

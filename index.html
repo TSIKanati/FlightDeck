@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE HIGHRISE - TSI Enterprise 3D Command Center</title>
+    <meta name="description" content="TSI Enterprise 3D Command Center - Twin Tower visualization of the entire TSI ecosystem">
+    <link rel="stylesheet" href="css/highrise.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>">
+
+    <!-- Three.js Import Map (local to avoid CDN blocks from untrusted SSL cert) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./js/vendor/three/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="hr-loading">
+        <h1>THE HIGHRISE</h1>
+        <p>Initializing TSI Enterprise Command Center...</p>
+        <div class="hr-loading-bar">
+            <div class="hr-loading-bar-fill"></div>
+        </div>
+    </div>
+
+    <!-- 3D Canvas Container -->
+    <div id="highrise-container"></div>
+
+    <!-- Keyboard Hints -->
+    <div class="hr-keyhints">
+        <kbd>Scroll</kbd> Navigate floors &nbsp;
+        <kbd>Click</kbd> Select floor &nbsp;
+        <kbd>DblClick</kbd> Enter floor<br>
+        <kbd>Esc</kbd> Back &nbsp;
+        <kbd>H</kbd> Toggle HUD &nbsp;
+        <kbd>M</kbd> Toggle Map<br>
+        <kbd>L</kbd> Lobby &nbsp;
+        <kbd>T</kbd> Top &nbsp;
+        <kbd>&uarr;&darr;</kbd> Floor up/down
+    </div>
+
+    <!-- Toast Container -->
+    <div class="hr-toast-container" id="toast-container"></div>
+
+    <!-- Application Bootstrap -->
+    <script>
+        window.addEventListener('error', function(e) {
+            console.error('ERROR:', e.message, '@', e.filename, ':', e.lineno);
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('PROMISE:', e.reason);
+        });
+
+        async function bootHighrise() {
+            try {
+                var mod = await import('./js/core/HighriseApp.js');
+                var container = document.getElementById('highrise-container');
+                var app = new mod.HighriseApp(container);
+                window.highrise = app;
+                await app.init();
+                console.log('[Highrise] TSI Enterprise 3D Command Center initialized - 227 agents, 22 floors');
+            } catch (err) {
+                console.error('[Highrise] Boot failed:', err);
+                var loading = document.querySelector('.hr-loading');
+                if (loading) {
+                    var p = loading.querySelector('p');
+                    if (p) { p.textContent = 'Error: ' + (err.message || err); p.style.color = '#e74c3c'; }
+                }
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bootHighrise);
+        } else {
+            bootHighrise();
+        }
+    </script>
+</body>
+</html>
