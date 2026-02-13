@@ -1,3 +1,8 @@
+# Plesk/IIS
+.user.ini
+App_Data/
+nul
+
 # Dependencies
 node_modules/
 .pnp
@@ -30,6 +35,7 @@ out/
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # Logs
 logs/
